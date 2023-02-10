@@ -17,6 +17,8 @@
 #+coalton-release
 (cl:declaim #.coalton-impl:*coalton-optimize-library*)
 
+(named-readtables:in-readtable coalton:coalton)
+
 (in-package #:coalton-library/math/fraction)
 (coalton-toplevel
   ;; We avoid "Rational" or "Ratio" since those might be a more

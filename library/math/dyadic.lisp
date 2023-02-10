@@ -26,6 +26,8 @@
 
 (in-package #:coalton-library/math/dyadic)
 
+(named-readtables:in-readtable coalton:coalton)
+
 (coalton-toplevel
   (define-type Dyadic
     "`(Dyadic n k)` represents the rational n*2^k."

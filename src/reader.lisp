@@ -33,10 +33,10 @@ Used to forbid reading while inside quasiquoted forms.")
                    (unread-char (car expected) stream)
                    nil))))))
     (cond
+      ((not *coalton-reader-allowed*)
+       (funcall #'#.(get-macro-character #\() stream char))
+      
       ((try-read-string "coalton-toplevel")
-       (unless *coalton-reader-allowed*
-         (error "COALTON-TOPLEVEL is not allowed in quasiquoted forms."))
-       
        (let* ((pathname (or *compile-file-truename* *load-truename*))
               (filename (if pathname (namestring pathname) "<unknown>"))
               
@@ -112,21 +112,30 @@ Used to forbid reading while inside quasiquoted forms.")
   ;;
   ;; This is a massive hack and might start breaking
   ;; with future changes in SBCL.
-  (let* ((file-offset
-           (- (sb-impl::fd-stream-get-file-position stream)
-              (file-position stream)))
-         (loc (parser:coalton-error-location error)))
-    (setf (sb-impl::fd-stream-misc stream)
-          (lambda (stream operation arg1)
-            (if (= (sb-impl::%stream-opcode :get-file-position) operation)
-                (+ file-offset loc 1)
-                (sb-impl::tracking-stream-misc stream operation arg1))))))
+  (when (typep stream 'sb-impl::form-tracking-stream)
+    (let* ((file-offset
+             (- (sb-impl::fd-stream-get-file-position stream)
+                (file-position stream)))
+           (loc (parser:coalton-error-location error)))
+      (setf (sb-impl::fd-stream-misc stream)
+            (lambda (stream operation arg1)
+              (if (= (sb-impl::%stream-opcode :get-file-position) operation)
+                  (+ file-offset loc 1)
+                  (sb-impl::tracking-stream-misc stream operation arg1)))))))
 
 (named-readtables:defreadtable coalton:coalton
   (:merge :standard)
   (:macro-char #\( #'read-coalton-toplevel-open-paren)
-  ;; TODO: We really should be somehow tracking if we are in
-  ;;       quasiquoted forms.
   (:macro-char #\` #'(lambda (s c)
                        (let ((*coalton-reader-allowed* nil))
-                         (funcall #'#.(get-macro-character #\`) s c)))))
+                         (funcall #'#.(get-macro-character #\`) s c))))
+  (:macro-char #\, #'(lambda (s c)
+                       (let ((*coalton-reader-allowed* t))
+                         (funcall #'#.(get-macro-character #\,) s c)))))
+
+(defmacro coalton:coalton-toplevel (&rest forms)
+  ;; lol.
+  (let ((*readtable* (named-readtables:ensure-readtable 'coalton:coalton))
+        (*compile-file-truename*
+          (pathname (format nil "COALTON-TOPLEVEL (~A)" *compile-file-truename*))))
+    (cl:read-from-string (cl:format cl:nil "(COALTON-TOPLEVEL ~{~S~%~})" forms))))

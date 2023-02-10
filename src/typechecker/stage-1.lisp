@@ -8,7 +8,6 @@
    #:coalton-impl/typechecker/scheme
    #:coalton-impl/typechecker/type-errors
    #:coalton-impl/typechecker/unify
-   #:coalton-impl/typechecker/equality
    #:coalton-impl/typechecker/fundeps
    #:coalton-impl/typechecker/environment
    #:coalton-impl/typechecker/lisp-type

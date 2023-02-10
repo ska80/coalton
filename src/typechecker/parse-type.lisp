@@ -154,7 +154,6 @@
            (type parser:qualified-ty qual-ty)
            (type coalton-file file)
            (type tc:environment env))
-
   (let ((reduced-preds (tc:reduce-context env preds nil)))
     (unless (null (set-exclusive-or preds reduced-preds :test #'tc:type-predicate=))
       (error 'tc-error

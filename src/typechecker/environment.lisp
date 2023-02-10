@@ -6,8 +6,7 @@
    #:coalton-impl/typechecker/types
    #:coalton-impl/typechecker/predicate
    #:coalton-impl/typechecker/scheme
-   #:coalton-impl/typechecker/unify
-   #:coalton-impl/typechecker/equality)
+   #:coalton-impl/typechecker/unify)
   (:import-from
    #:coalton-impl/typechecker/substitutions
    #:apply-substitution
@@ -1130,6 +1129,7 @@
          (to-ty (specialization-entry-to-ty entry)))
 
     (fset:do-seq (elem (immutable-listmap-lookup (environment-specialization-environment env) from :no-error t) :index index)
+      ;; TODO: Write type=
       (when (type= to-ty (specialization-entry-to-ty elem))
         (return-from add-specialization
           (update-environment env

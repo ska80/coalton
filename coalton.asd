@@ -65,7 +65,6 @@
                              (:file "scheme")
                              (:file "type-errors")
                              (:file "unify")
-                             (:file "equality")
                              (:file "fundeps")
                              (:file "environment")
                              (:file "lisp-type")

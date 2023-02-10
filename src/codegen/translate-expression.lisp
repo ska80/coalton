@@ -200,7 +200,8 @@ Returns a `node'.")
 
                        (make-node-seq
                         :type (tc:qualified-ty-type qual-ty)
-                        :nodes (list body-node out-node))))))
+                        :nodes (list (translate-expression body-node ctx env)
+                                     out-node))))))
           :finally (return out-node)))
 
   (:method ((expr tc:node-abstraction) ctx env)
@@ -497,7 +498,7 @@ Returns a `node'.")
       (loop :with out-node := (make-node-lisp
                                :type (tc:qualified-ty-type qual-ty)
                                :vars nil
-                               :form '(cl:error "Non-exhaustive COND."))
+                               :form '((cl:error "Non-exhaustive COND.")))
             :for clause :in (reverse (tc:node-cond-clauses expr)) :do
               (setf out-node
                     (make-node-match

@@ -40,6 +40,8 @@
 
 (cl:in-package #:coalton-library/math/real)
 
+(named-readtables:in-readtable coalton:coalton)
+
 (coalton-toplevel
   (define-class (Quantizable :a)
     "The representation of a type that allows for rounding operations

@@ -39,6 +39,8 @@
 
 (in-package #:coalton-library/math/integral)
 
+(named-readtables:in-readtable coalton:coalton)
+
 (coalton-toplevel
   (define-class (Num :a => Remainder :a)
     "Remainder is typically an integral domain satisfying:
@@ -55,7 +57,7 @@ a = (+ (* b (div a b)) (mod a b))
     (mod (:a -> :a -> :a))
     (divMod (:a -> :a -> (Tuple :a :a))))
 
-  (define-class ((Remainder :int) (Ord :int) => (Integral :int))
+  (define-class ((Remainder :int) (Ord :int) => Integral :int)
     "Integral is a number that is either even or odd where `div` and `quot`
 are floored and truncated division, respectively."
     (toInteger (:int -> Integer)))

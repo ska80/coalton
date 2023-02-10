@@ -15,6 +15,8 @@
 
 (in-package #:coalton-library/math/conversions)
 
+(named-readtables:in-readtable coalton:coalton)
+
 (cl:eval-when (:compile-toplevel :load-toplevel)
   (cl:unless (cl:and (cl:subtypep '(cl:signed-byte 32) 'cl:fixnum)
                      (cl:subtypep 'cl:fixnum '(cl:signed-byte 64)))

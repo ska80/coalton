@@ -102,8 +102,7 @@ Returns (PREDS FOUNDP)"
     (simp-loop nil preds)))
 
 ;; TODO: Remove unused param
-(defun reduce-context (env preds subs &key (allow-deferred-predicates t))
-  (declare (ignore allow-deferred-predicates))
+(defun reduce-context (env preds subs)
   (let ((env (apply-substitution subs env))
         (preds (apply-substitution subs preds)))
     (simplify-context

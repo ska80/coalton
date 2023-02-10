@@ -171,7 +171,7 @@
     (multiple-value-bind (preds binding-nodes subs)
         (infer-bindings-type defines dec-table nil tc-env file)
       (assert (null preds))
-      
+
       (let (;; Attach explicit types to any explicit bindings
 
             ;; TODO: Do we need to unify these so that type variables line up for codegen?
@@ -303,7 +303,9 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
       (handler-case
           (progn
             (setf subs (tc:unify subs ty expected-type))
-            (let ((type (tc:apply-substitution subs ty)))
+
+            (let ((type (tc:apply-substitution subs ty))
+                  (preds (tc:apply-substitution subs preds)))
               (values
                type
                preds
@@ -572,7 +574,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
               (progn
                 (setf subs (tc:unify subs ty expected-type))
                 (let ((type (tc:apply-substitution subs ty))
-                      
+
                       (var-nodes
                         (if (null (parser:node-abstraction-vars node))
                             (list (make-node-variable
@@ -664,14 +666,14 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
           (progn
             (setf subs (tc:unify subs declared-ty expected-type))
             (let ((type (tc:apply-substitution subs declared-ty))
-                  
+
                   (var-nodes
                     (mapcar (lambda (var)
                               (make-node-variable
                                :type (tc:qualify nil (tc-env-lookup-value env var file))
                                :source (parser:node-source var)
                                :name (parser:node-variable-name var)))
-                            (parser:node-lisp-vars node))))              
+                            (parser:node-lisp-vars node))))
               (values
                type
                nil
@@ -737,19 +739,30 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
                      :collect (make-node-match-branch
                                :pattern pat-node
                                :body branch-body-node
-                               :source (parser:node-match-branch-source branch))))
+                               :source (parser:node-match-branch-source branch)))))
 
-             (type (tc:apply-substitution subs ret-ty)))
-
-        (values
-         type
-         preds
-         (make-node-match
-          :type (tc:qualify nil type)
-          :source (parser:node-source node)
-          :expr expr-node
-          :branches branch-nodes)
-         subs))))
+        (handler-case
+            (progn
+              (setf subs (tc:unify subs ret-ty expected-type))
+              (let ((type (tc:apply-substitution subs ret-ty)))
+                (values
+                 type
+                 preds
+                 (make-node-match
+                  :type (tc:qualify nil type)
+                  :source (parser:node-source node)
+                  :expr expr-node
+                  :branches branch-nodes)
+                 subs)))
+          (error:coalton-type-error ()
+            (error 'tc-error
+                   :err (coalton-error
+                         :span (parser:node-source node)
+                         :file file
+                         :message "Type mismatch"
+                         :primary-note (format nil "Expected type '~A' but got type '~A'"
+                                               (tc:apply-substitution subs expected-type)
+                                               (tc:apply-substitution subs ret-ty)))))))))
 
   (:method ((node parser:node-progn) expected-type subs env file)
     (declare (type tc:ty expected-type)
@@ -802,7 +815,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
                          :file file
                          :message "Type mismatch"
                          :primary-note (format nil "Declared type '~A' does not match inferred type '~A'"
-                                               declared-ty 
+                                               declared-ty
                                                expr-ty)))))
 
         ;; Check that declared-ty is not more specific than expr-ty
@@ -982,34 +995,33 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
 
       (multiple-value-bind (then-ty preds_ then-node subs)
           (infer-expression-type (parser:node-if-then node)
-                                 (tc:make-variable)
+                                 expected-type
                                  subs
                                  env
                                  file)
+        (declare (ignore then-ty))
         (setf preds (append preds preds_))
 
         (multiple-value-bind (else-ty preds_ else-node subs)
             (infer-expression-type (parser:node-if-else node)
-                                   then-ty ; unify against then-ty
+                                   expected-type
                                    subs
                                    env
                                    file)
           (setf preds (append preds preds_))
 
           (handler-case
-              (progn
-                (setf subs (tc:unify subs else-ty expected-type))
-                (let ((type (tc:apply-substitution subs else-ty)))
-                  (values
-                   type
-                   preds
-                   (make-node-if
-                    :type (tc:qualify nil type)
-                    :source (parser:node-source node)
-                    :expr expr-node
-                    :then then-node
-                    :else else-node)
-                   subs)))
+              (let ((type (tc:apply-substitution subs else-ty)))
+                (values
+                 type
+                 preds
+                 (make-node-if
+                  :type (tc:qualify nil type)
+                  :source (parser:node-source node)
+                  :expr expr-node
+                  :then then-node
+                  :else else-node)
+                 subs))
             (error:coalton-type-error ()
               (error 'tc-error
                      :err (coalton-error
@@ -1191,7 +1203,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
 
   ;; TODO: node-do
   )
-  
+
 ;;;
 ;;; Pattern Type Inference
 ;;;
@@ -1269,7 +1281,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
      (make-pattern-wildcard
       :type (tc:qualify nil expected-type)
       :source (parser:pattern-source pat))
-     nil))
+     subs))
 
   (:method ((pat parser:pattern-constructor) expected-type subs env file)
     (declare (type tc:ty expected-type)
@@ -1567,7 +1579,11 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
           (let* (;; Calculate defaultable predicates
                  (defaultable-preds
                    (handler-case
-                       (tc:default-preds (tc-env-env env) (append env-tvars local-tvars) retained-preds)
+                       (tc:default-preds
+                        (tc-env-env env)
+                        (append env-tvars local-tvars)
+                        retained-preds)
+
                      (error:coalton-type-error (e)
                        (error-ambigious-pred (tc:ambigious-constraint-pred e) file))))
 
@@ -1896,22 +1912,22 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
              (type node-body value)
              (type node-variable-list vars)
              (values toplevel-define))
-    
+
    (make-toplevel-define
     :source (parser:toplevel-define-source binding)
     :name name
     :body value
     :vars vars))
-  
+
   (:method ((binding parser:node-let-binding) name value vars)
     (declare (type node-variable name)
              (type node value)
              (type node-variable-list vars)
              (values node-let-binding))
-    
+
     (unless (null vars)
       (util:coalton-bug "Unexpected parameters on let binding"))
-    
+
    (make-node-let-binding
     :name name
     :value value
@@ -1933,7 +1949,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
   (:method ((binding toplevel-define) explicit-type)
     (declare (type tc:qualified-ty explicit-type)
              (values toplevel-define))
-    
+
    (make-toplevel-define
     :name (make-node-variable
            :name (node-variable-name (toplevel-define-name binding))
@@ -1942,11 +1958,11 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
     :body (toplevel-define-body binding)
     :vars (toplevel-define-vars binding)
     :source (toplevel-define-source binding)))
-  
+
   (:method ((binding node-let-binding) explicit-type)
     (declare (type tc:qualified-ty explicit-type)
              (values node-let-binding))
-    
+
    (make-node-let-binding
     :name (make-node-variable
            :name (node-variable-name (node-let-binding-name binding))

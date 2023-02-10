@@ -22,6 +22,8 @@
 
 (in-package #:coalton-library/math/complex)
 
+(named-readtables:in-readtable coalton:coalton)
+
 (coalton-toplevel
   (repr :native (cl:or cl:number complex))
   (define-type (Complex :a)

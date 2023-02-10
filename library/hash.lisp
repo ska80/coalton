@@ -79,14 +79,11 @@ Invariant (== left right) implies (== (hash left) (hash right))."
 
 ;; TODO: There's now some issues with how we do macroexpansion emitting COALTON-TOPLEVEL.
 (cl:defmacro define-sxhash-hasher (type)
-  `(define-instance (Hash ,type)
-     (define (hash item)
-       shshlshl
-       (lisp Hash (item)
-         (cl:sxhash item)))))
-
-(coalton-toplevel
-  (define-sxhash-hasher Hash))
+  `(coalton-toplevel
+     (define-instance (Hash ,type)
+       (define (hash item)
+         (lisp Hash (item)
+           (cl:sxhash item))))))
 
 #+sb-package-locks
 (sb-ext:lock-package "COALTON-LIBRARY/HASH")

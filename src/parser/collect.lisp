@@ -211,7 +211,7 @@ in expressions. May not include all bound variables."
      (node-unless-body node)))
 
   (:method ((node node-cond-clause))
-    (declare (values node-cond-clause))
+    (declare (values node-variable-list))
     (nconc
      (collect-variables-generic% (node-cond-clause-expr node))
      (collect-variables-generic% (node-cond-clause-body node))))

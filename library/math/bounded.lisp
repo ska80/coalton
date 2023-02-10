@@ -16,6 +16,8 @@
 
 (in-package #:coalton-library/math/bounded)
 
+(named-readtables:in-readtable coalton:coalton)
+
 (coalton-toplevel
   (define-class (Bounded :a)
     "Types which have a maximum and minumum bound."

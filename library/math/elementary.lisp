@@ -38,6 +38,8 @@
 
 (in-package #:coalton-library/math/elementary)
 
+(named-readtables:in-readtable coalton:coalton)
+
 (coalton-toplevel
   (define-class (Trigonometric :a)
     "Standard circular functions and their inverses."
