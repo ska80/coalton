@@ -20,6 +20,7 @@
    #:coalton-impl/typechecker/parse-type
    #:coalton-impl/typechecker/pattern
    #:coalton-impl/typechecker/expression
+   #:coalton-impl/typechecker/traverse
    #:coalton-impl/typechecker/toplevel
    #:coalton-impl/typechecker/tc-env)
   (:local-nicknames
@@ -1048,7 +1049,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
       (declare (ignore expr-ty))
 
       (multiple-value-bind (body-ty preds_ body-node subs)
-          (infer-expression-type (parser:node-when-expr node)
+          (infer-expression-type (parser:node-when-body node)
                                  tc:*unit-type*
                                  subs
                                  env
@@ -1745,7 +1746,18 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
 
                      (output-schemes
                        (loop :for ty :in output-qual-tys
-                             :collect (tc:quantify local-tvars ty))))
+                             :collect (tc:quantify local-tvars ty)))
+
+                     (rewrite-table
+                       (loop :with table := (make-hash-table :test #'eq)
+
+                             :for ty :in output-qual-tys
+                             :for binding :in bindings
+
+                             :for name := (parser:node-variable-name (parser:name binding))
+                             :do (setf (gethash name table) ty)
+
+                             :finally (return table))))
 
                 (loop :for scheme :in output-schemes
                       :for binding :in bindings
@@ -1760,7 +1772,9 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
                  deferred-preds
                  (loop :for binding :in binding-nodes
                        :for ty :in output-qual-tys
-                       :collect (attach-explicit-binding-type binding ty))
+                       :collect (rewrite-recursive-calls
+                                 (tc:apply-substitution subs (attach-explicit-binding-type binding ty))
+                                 rewrite-table))
                  subs))))))))
 
 (defun infer-binding-type (binding expected-type subs env file)
@@ -1983,3 +1997,46 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
      :vars (instance-method-definition-vars binding)
      :body (instance-method-definition-body binding)
      :source (instance-method-definition-source binding))))
+
+;;; When infering the types of bindings in a recursive binding group,
+;;; references to those bindings will not yet have predicates. If
+;;; these incorrectly typed references remain then compiler will
+;;; produce invalid codegen. `rewrite-recursive-calls' rewrites the
+;;; type of recursive refences once the predicates on each binding are
+;;; known.
+
+(defun rewrite-recursive-calls (binding table)
+  (declare (type hash-table table))
+
+  (labels ((rewrite-variable-ref (node)
+             (declare (type node-variable node)
+                      (values node-variable))
+
+             (if (gethash (node-variable-name node) table)
+
+                 (make-node-variable
+                  :type (gethash (node-variable-name node) table)
+                  :source (node-source node)
+                  :name (node-variable-name node))
+
+                 node)))
+
+    (etypecase binding
+      (toplevel-define
+       (make-toplevel-define
+        :name (toplevel-define-name binding)
+        :body (traverse
+               (toplevel-define-body binding)
+               (make-traverse-block
+                :variable #'rewrite-variable-ref))
+        :vars (toplevel-define-vars binding)
+        :source (toplevel-define-source binding)))
+
+      (node-let-binding
+       (make-node-let-binding
+        :name (node-let-binding-name binding)
+        :value (traverse
+                (node-let-binding-value binding)
+                (make-traverse-block
+                 :variable #'rewrite-variable-ref))
+        :source (node-let-binding-source binding))))))

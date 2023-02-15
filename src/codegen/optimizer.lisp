@@ -45,6 +45,7 @@
            (type tc:environment env)
            (values binding-list tc:environment))
 
+
   (let ((bindings (optimize-bindings-initial bindings package env)))
 
     ;; Make code and environment data avaliable to the monomorphizer

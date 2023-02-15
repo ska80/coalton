@@ -90,6 +90,12 @@
    #:toplevel-define-instance-head-src  ; ACCESSOR
    #:toplevel-define-instance-docstring ; ACCESSOR
    #:toplevel-define-instance-list      ; TYPE
+   #:toplevel-specialize                ; STRUCT
+   #:make-toplevel-specialize           ; CONSTRUCTOR
+   #:toplevel-specialize-from           ; ACCESSOR
+   #:toplevel-specialize-to             ; ACCESSOR
+   #:toplevel-specialize-type           ; ACCESSOR
+   #:toplevel-specialize-list           ; TYPE
    #:program                            ; STRUCT
    #:make-program                       ; CONSTRUCTOR
    #:program-package                    ; ACCESSOR
@@ -99,6 +105,7 @@
    #:program-defines                    ; ACCESSOR
    #:program-classes                    ; ACCESSOR
    #:program-instances                  ; ACCESSOR
+   #:program-specializations            ; ACCESSOR
    #:parse-toplevel-form                ; FUNCTION
    #:read-program                       ; FUNCTION
    #:read-expression                    ; FUNCTION
@@ -325,15 +332,31 @@
 (deftype toplevel-define-instance-list ()
   '(satisfies toplevel-define-instance-list-p))
 
+(defstruct (toplevel-specialize
+            (:copier nil))
+  (from (util:required 'from) :type node-variable :read-only t)
+  (to   (util:required 'to)   :type node-variable :read-only t)
+  (type (util:required 'type) :type qualified-ty  :read-only t))
+
+(eval-when (:load-toplevel :compile-toplevel :execute)
+  (defun toplevel-specialize-list-p (x)
+    (and (alexandria:proper-list-p x)
+         (every #'toplevel-specialize-p x))))
+
+(deftype toplevel-specialize-list ()
+  '(satisfies toplevel-specialize-list-p))
+
+;;; TODO: should package and file slots be removed?
 (defstruct (program
             (:copier nil))
-  (package   (util:required 'package) :type package                       :read-only t)
-  (file      (util:required 'file)    :type coalton-file                  :read-only t)
-  (types     nil                      :type toplevel-define-type-list     :read-only nil)
-  (declares  nil                      :type toplevel-declare-list         :read-only nil)
-  (defines   nil                      :type toplevel-define-list          :read-only nil)
-  (classes   nil                      :type toplevel-define-class-list    :read-only nil)
-  (instances nil                      :type toplevel-define-instance-list :read-only nil))
+  (package         (util:required 'package) :type package                       :read-only t)
+  (file            (util:required 'file)    :type coalton-file                  :read-only t)
+  (types           nil                      :type toplevel-define-type-list     :read-only nil)
+  (declares        nil                      :type toplevel-declare-list         :read-only nil)
+  (defines         nil                      :type toplevel-define-list          :read-only nil)
+  (classes         nil                      :type toplevel-define-class-list    :read-only nil)
+  (instances       nil                      :type toplevel-define-instance-list :read-only nil)
+  (specializations nil                      :type toplevel-specialize-list      :read-only nil))
 
 ;;
 ;; Empty package for reading (package) forms
@@ -500,12 +523,12 @@ consume all attributes")))
            (values boolean &optional))
 
   (when (cst:atom form)
-   (error 'parse-error
-          :err (coalton-error
-                :span (cst:source form)
-                :file file
-                :message "Malformed toplevel form"
-                :primary-note "Unexpected atom")))
+    (error 'parse-error
+           :err (coalton-error
+                 :span (cst:source form)
+                 :file file
+                 :message "Malformed toplevel form"
+                 :primary-note "Unexpected atom")))
 
   ;; Toplevel forms must begin with an atom
   (when (cst:consp (cst:first form))
@@ -724,7 +747,25 @@ consume all attributes")))
        (push instance (program-instances program))
        t))
 
-    
+    ((coalton:specialize)
+     (let ((spec (parse-specialize form file)))
+
+       (unless (zerop (length attributes))
+         (error 'parse-error
+                :err (coalton-error
+                      :span (cst:source (cdr (aref attributes 0)))
+                      :file file
+                      :message "Invalid attribute for specialize"
+                      :primary-note "specialize cannot have attributes"
+                      :notes
+                      (list
+                       (make-coalton-error-note
+                        :type :secondary
+                        :span (cst:source form)
+                        :message "when parsing specialize")))))
+
+       (push spec (program-specializations program))
+       t))   
 
     (t
      (cond
@@ -739,11 +780,11 @@ consume all attributes")))
           (parse-toplevel-form (expand-macro form) program attributes file)))
        
        ((error 'parse-error
-                :err (coalton-error
-                      :span (cst:source (cst:first form))
-                      :file file
-                      :message "Invalid toplevel form"
-                      :primary-note "unknown toplevel form")))))))
+               :err (coalton-error
+                     :span (cst:source (cst:first form))
+                     :file file
+                     :message "Invalid toplevel form"
+                     :primary-note "unknown toplevel form")))))))
 
 
 (defun parse-define (form file)
@@ -1253,6 +1294,57 @@ consume all attributes")))
        :source (cst:source form)
        :head-src (cst:source (cst:second form))))))
 
+(defun parse-specialize (form file)
+  (declare (type cst:cst form)
+           (type coalton-file file)
+           (values toplevel-specialize))
+
+  (assert (cst:consp form))
+
+  ;; (specialize)
+  (unless (cst:consp (cst:rest form)) 
+    (error 'parse-error
+           :err (coalton-error
+                 :span (cst:source form)
+                 :file file
+                 :highlight :end
+                 :message "Malformed specialize decleration"
+                 :primary-note "missing from name")))
+
+  ;; (specialize f)
+  (unless (cst:consp (cst:rest (cst:rest form)))
+    (error 'parse-error
+           :err (coalton-error
+                 :span (cst:source form)
+                 :file file
+                 :highlight :end
+                 :message "Malformed specialize decleration"
+                 :primary-note "missing to name")))
+
+  ;; (specialize f f2)
+  (unless (cst:consp (cst:rest (cst:rest (cst:rest form))))
+    (error 'parse-error
+           :err (coalton-error
+                 :span (cst:source form)
+                 :file file
+                 :highlight :end
+                 :message "Malformed specialize decleration"
+                 :primary-note "missing type")))
+
+  ;; (specialize f f2 t ....)
+  (when (cst:consp (cst:rest (cst:rest (cst:rest (cst:rest form)))))
+    (error 'parse-error
+           :err (coalton-error
+                 :span (cst:source (cst:first (cst:rest (cst:rest (cst:rest (cst:rest form))))))
+                 :file file
+                 :message "Malformed specialize decleration"
+                 :primary-note "unexpected form")))
+
+  (make-toplevel-specialize
+   :from (parse-variable (cst:second form) file)
+   :to (parse-variable (cst:third form) file)
+   :type (parse-qualified-type (cst:fourth form) file)))
+
 (defun parse-method (method-form form file)
   (declare (type cst:cst method-form)
            (type coalton-file file)
@@ -1311,6 +1403,7 @@ consume all attributes")))
           :source (cst:source (cst:first method-form)))
    :type (parse-qualified-type (cst:second method-form) file)
    :source (cst:source method-form)))
+
 
 (defun parse-type-variable (form file)
   (declare (type cst:cst form)

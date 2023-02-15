@@ -4,6 +4,7 @@
    #:coalton-impl/util
    #:coalton-impl/codegen/ast)
   (:local-nicknames
+   (#:util #:coalton-impl/util)
    (#:tc #:coalton-impl/typechecker))
   (:export
    #:typecheck-node ; FUNCTION
@@ -105,6 +106,7 @@
     (let ((type (node-type expr))
 
           (subs nil))
+
       (loop :for branch :in (node-match-branches expr)
             :for subexpr-ty := (typecheck-node branch env) :do
               (progn

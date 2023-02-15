@@ -72,6 +72,7 @@
                              (:file "stage-1")
                              (:file "pattern")
                              (:file "expression")
+                             (:file "traverse")
                              (:file "toplevel")
                              (:file "binding")
                              (:file "partial-type-env")
@@ -117,7 +118,6 @@
                (:file "debug")
                #+broken
                (:file "faux-macros")
-               #+broken
                (:file "language-macros")
                #+broken
                (:file "lock-package" :if-feature :sb-package-locks)))

@@ -65,3 +65,38 @@
   (name     (util:required 'name)     :type parser:identifier :read-only t)
   (patterns (util:required 'patterns) :type pattern-list      :read-only t))
 
+;;;
+;;; Methods
+;;;
+
+(defmethod tc:apply-substitution (subs (node pattern-var))
+  (declare (type tc:substitution-list subs)
+           (values pattern-var &optional))
+  (make-pattern-var
+   :type (tc:apply-substitution subs (pattern-type node))
+   :source (pattern-source node)
+   :name (pattern-var-name node)))
+
+(defmethod tc:apply-substitution (subs (node pattern-literal))
+  (declare (type tc:substitution-list subs)
+           (values pattern-literal &optional))
+  (make-pattern-literal
+   :type (tc:apply-substitution subs (pattern-type node))
+   :source (pattern-source node)
+   :value (pattern-literal-value node)))
+
+(defmethod tc:apply-substitution (subs (node pattern-wildcard))
+  (declare (type tc:substitution-list subs)
+           (values pattern-wildcard &optional))
+  (make-pattern-wildcard
+   :type (tc:apply-substitution subs (pattern-type node))
+   :source (pattern-source node)))
+
+(defmethod tc:apply-substitution (subs (node pattern-constructor))
+  (declare (type tc:substitution-list subs)
+           (values pattern-constructor &optional))
+  (make-pattern-constructor
+   :type (tc:apply-substitution subs (pattern-type node))
+   :source (pattern-source node)
+   :name (pattern-constructor-name node)
+   :patterns (tc:apply-substitution subs (pattern-constructor-patterns node))))

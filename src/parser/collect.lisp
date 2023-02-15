@@ -188,7 +188,7 @@ in expressions. May not include all bound variables."
     (mapcan #'collect-variables-generic% (node-or-nodes node)))
 
   (:method ((node node-and))
-    (declare (values node-and))
+    (declare (values node-variable-list))
     (mapcan #'collect-variables-generic% (node-and-nodes node)))
 
   (:method ((node node-if))

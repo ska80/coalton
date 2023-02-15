@@ -195,13 +195,10 @@ Returns a `node'.")
                                          :body out-node))))))))
                     
                     (tc:node
-                     (let ((qual-ty (tc:node-type body-node)))
-                       (assert (null (tc:qualified-ty-predicates qual-ty)))
-
                        (make-node-seq
-                        :type (tc:qualified-ty-type qual-ty)
+                        :type (node-type out-node) 
                         :nodes (list (translate-expression body-node ctx env)
-                                     out-node))))))
+                                     out-node)))))
           :finally (return out-node)))
 
   (:method ((expr tc:node-abstraction) ctx env)
@@ -435,7 +432,7 @@ Returns a `node'.")
            (unit-value (find-symbol "UNIT" coalton-package)))
 
       (make-node-match
-       :type tc:*boolean-type*
+       :type tc:*unit-type*
        :expr (translate-expression (tc:node-when-expr expr) ctx env)
        :branches (list
                   (make-match-branch
