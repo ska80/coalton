@@ -153,7 +153,7 @@
                  :finally (return table)))
 
          (types-by-scc
-           (loop :for scc :in sccs
+           (loop :for scc :in (reverse sccs)
                  :collect (loop :for name :in scc
                                 :collect (gethash name type-table)))))
 

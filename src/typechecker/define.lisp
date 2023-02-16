@@ -332,10 +332,6 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
              (type coalton-file file)
              (values tc:ty tc:ty-predicate-list node-application tc:substitution-list))
 
-    ;; TODO: lol lmao
-    (when (null (parser:node-application-rands node))
-      (error ""))
-
     (multiple-value-bind (fun-ty preds rator-node subs)
         (infer-expression-type (parser:node-application-rator node)
                                (tc:make-variable)
@@ -346,7 +342,11 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
       (let* ((fun-ty_ fun-ty)
              (rand-nodes
                ;; Apply arguments one at a time for better error messages
-               (loop :for rand :in (parser:node-application-rands node)
+               (loop :for rand :in (or (parser:node-application-rands node)
+                                       (list
+                                        (parser:make-node-variable
+                                         :source (parser:node-source node)
+                                         :name 'coalton:unit)))
                      :collect (cond
                                 ;; If the rator is a function then unify against its argument
                                 ((tc:function-type-p fun-ty_)
@@ -808,7 +808,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
 
         ;; Check that declared-ty and expr-ty unify
         (handler-case
-            (tc:unify subs declared-ty expr-ty)
+            (setf subs (tc:unify subs declared-ty expr-ty))
           (error:coalton-type-error ()
             (error 'tc-error
                    :err (coalton-error
@@ -1094,7 +1094,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
       (declare (ignore expr-ty))
 
       (multiple-value-bind (body-ty preds_ body-node subs)
-          (infer-expression-type (parser:node-unless-expr node)
+          (infer-expression-type (parser:node-unless-body node)
                                  tc:*unit-type*
                                  subs
                                  env

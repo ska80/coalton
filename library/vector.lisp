@@ -44,6 +44,8 @@
 
 (in-package #:coalton-library/vector)
 
+(named-readtables:in-readtable coalton:coalton)
+
 (coalton-toplevel
 
   ;;
@@ -254,7 +256,7 @@
   ;; Vector Instances
   ;;
 
-  (define-instance (Eq :a => (Eq (Vector :a)))
+  (define-instance (Eq :a => Eq (Vector :a))
     (define (== v1 v2)
       (if (/= (length v1) (length v2))
           False

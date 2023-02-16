@@ -1039,24 +1039,29 @@
             (predicate-unification-error () nil))
 
       ;; If we have the same instance then simply overwrite the old one
-      (if (type-predicate= (ty-class-instance-predicate value)
-                           (ty-class-instance-predicate inst))
-          (return-from add-instance
-            (update-environment
-             env
-             :instance-environment (make-instance-environment
-                                    :instances (immutable-listmap-replace
-                                                (instance-environment-instances (environment-instance-environment env))
-                                                class
-                                                index
-                                                value)
-                                    :codegen-syms (immutable-map-set
-                                                   (instance-environment-codegen-syms (environment-instance-environment env))
-                                                   (ty-class-instance-codegen-sym value)
-                                                   value))))
+      (handler-case
+          (progn
+            (predicate-match (ty-class-instance-predicate value) (ty-class-instance-predicate inst))
+            (predicate-match (ty-class-instance-predicate value) (ty-class-instance-predicate inst))
+
+            (return-from add-instance
+              (update-environment
+               env
+               :instance-environment (make-instance-environment
+                                      :instances (immutable-listmap-replace
+                                                  (instance-environment-instances (environment-instance-environment env))
+                                                  class
+                                                  index
+                                                  value)
+                                      :codegen-syms (immutable-map-set
+                                                     (instance-environment-codegen-syms (environment-instance-environment env))
+                                                     (ty-class-instance-codegen-sym value)
+                                                     value))))
+            )
+        (predicate-unification-error ()
           (error 'overlapping-instance-error
                  :inst1 (ty-class-instance-predicate value)
-                 :inst2 (ty-class-instance-predicate inst)))))
+                 :inst2 (ty-class-instance-predicate inst))))))
 
   (update-environment
    env
@@ -1066,9 +1071,9 @@
                                       class
                                       value)
                           :codegen-syms (immutable-map-set
-                                        (instance-environment-codegen-syms (environment-instance-environment env))
-                                        (ty-class-instance-codegen-sym value)
-                                        value))))
+                                         (instance-environment-codegen-syms (environment-instance-environment env))
+                                         (ty-class-instance-codegen-sym value)
+                                         value))))
 
 (defun set-method-inline (env method instance codegen-sym)
   (declare (type environment env)

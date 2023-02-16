@@ -72,6 +72,8 @@
 
 (in-package #:coalton-library/list)
 
+(named-readtables:in-readtable coalton:coalton)
+
 (coalton-toplevel
 
   ;;
@@ -626,7 +628,7 @@ This function is equivalent to all size-N elements of `(COMBS L)`."
   ;; List instances
   ;;
 
-  (define-instance (Eq :a => (Eq (List :a)))
+  (define-instance (Eq :a => Eq (List :a))
     (define (== a b)
       (match a
         ((Cons x xs)
@@ -657,7 +659,7 @@ This function is equivalent to all size-N elements of `(COMBS L)`."
              (<=> left-tail right-tail)
              (<=> left-head right-head))))))
 
-  (define-instance (Hash :a => (Hash (List :a)))
+  (define-instance (Hash :a => Hash (List :a))
     (define (hash lst)
       (fold (fn (so-far elt)
               (combine-hashes so-far (hash elt)))

@@ -461,7 +461,7 @@ Returns a `node'.")
            (unit-value (find-symbol "UNIT" coalton-package)))
 
       (make-node-match
-       :type tc:*boolean-type*
+       :type tc:*unit-type*
        :expr (translate-expression (tc:node-unless-expr expr) ctx env)
        :branches (list
                   (make-match-branch

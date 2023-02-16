@@ -58,6 +58,7 @@
            (type coalton-file file)
            (values tc:ty tc:ty-predicate-list))
 
+
   (let* ((scheme (or (gethash (parser:node-variable-name var) (tc-env-ty-table env))
 
                  (tc:lookup-value-type (tc-env-env env) (parser:node-variable-name var) :no-error t)

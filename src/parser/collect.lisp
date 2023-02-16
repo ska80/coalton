@@ -128,14 +128,14 @@ in expressions. May not include all bound variables."
     nil)
 
   (:method ((node node-bind))
-    (declare (values node-variable-list))
-    (nconc
-     (collect-variables-generic% (node-bind-pattern node))
-     (collect-variables-generic% (node-bind-expr node))))
+    (declare (values node-variable-list &optional))
+    (collect-variables-generic% (node-bind-expr node)))
 
   (:method ((node node-body))
     (declare (values node-variable-list &optional))
-    (collect-variables-generic% (node-body-last-node node)))
+    (nconc
+     (mapcan #'collect-variables-generic% (node-body-nodes node))
+     (collect-variables-generic% (node-body-last-node node))))
 
   (:method ((node node-abstraction))
     (declare (values node-variable-list &optional))
@@ -201,14 +201,14 @@ in expressions. May not include all bound variables."
   (:method ((node node-when))
     (declare (values node-variable-list))
     (nconc
-     (node-when-expr node)
-     (node-when-body node)))
+     (collect-variables-generic% (node-when-expr node))
+     (collect-variables-generic% (node-when-body node))))
 
   (:method ((node node-unless))
     (declare (values node-variable-list))
     (nconc
-     (node-unless-expr node)
-     (node-unless-body node)))
+     (collect-variables-generic% (node-unless-expr node))
+     (collect-variables-generic% (node-unless-body node))))
 
   (:method ((node node-cond-clause))
     (declare (values node-variable-list))

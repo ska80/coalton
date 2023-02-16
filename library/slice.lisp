@@ -31,6 +31,8 @@
 
 (in-package #:coalton-library/slice)
 
+(named-readtables:in-readtable coalton:coalton)
+
 (coalton-toplevel
   ;;
   ;; Slice
@@ -165,7 +167,7 @@
   ;; Instances
   ;;
 
-  (define-instance (Eq :a => (Eq (Slice :a)))
+  (define-instance (Eq :a => Eq (Slice :a))
     (define (== s1 s2)
       (if (/= (length s1) (length s2))
           False
