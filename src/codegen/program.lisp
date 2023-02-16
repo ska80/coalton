@@ -50,7 +50,7 @@
                                 (tc:binding-value define)))
                   :collect (cons name compiled-node))
 
-            (loop :for instance :in (tc:translation-unit-instances translation-unit)
+            (loop :for instance :in (reverse (tc:translation-unit-instances translation-unit))
                   :append (translate-instance instance env))))
 
          (definition-names

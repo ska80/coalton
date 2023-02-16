@@ -1666,9 +1666,11 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
                             (setf preds (append preds preds_))
                             node_))))
 
+    (tc:apply-substitution subs env)
+
     (let* ((expr-tys (tc:apply-substitution subs expr-tys))
 
-           (env-tvars (tc:apply-substitution subs (tc-env-bindings-variables env bound-variables)))
+           (env-tvars (tc-env-bindings-variables env bound-variables))
 
            (expr-tvars (remove-duplicates (tc:type-variables expr-tys) :test #'eq))
 

@@ -35,7 +35,7 @@
     (real-part (Complex :a -> :a))
     (imag-part (Complex :a -> :a)))
 
-  (define-instance ((Complex :a) => (Into :a (Complex :a)))
+  (define-instance ((Complex :a) => Into :a (Complex :a))
     (define (into a)
       (complex a 0)))
 

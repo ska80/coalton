@@ -115,6 +115,10 @@
 
         (setf env (tc:add-instance env class-name instance-entry))
 
+        (loop :for method-name :in method-names
+              :for method-codegen-sym := (gethash method-name method-codegen-syms) :do
+          (setf env (tc:set-method-inline env method-name instance-codegen-sym method-codegen-sym)))
+
         (values instance-entry env)))))
 
 (defun typecheck-instance (instance unparsed-instance env file)
