@@ -18,8 +18,7 @@
 
 (defstruct partial-class
   (superclasses (util:required 'superclasses) :type tc:ty-predicate-list :read-only t)
-  (method-tys   (util:required 'method-tys)   :type tc:qualified-ty-list :read-only t)
-  (fundeps      (util:required 'fundeps)      :type tc:fundep-list       :read-only t))
+  (method-tys   (util:required 'method-tys)   :type tc:qualified-ty-list :read-only t))
 
 (defmethod tc:kind-variables-generic% ((partial partial-class))
   (nconc
@@ -32,8 +31,7 @@
 
   (make-partial-class
    :superclasses (tc:apply-ksubstitution ksubs (partial-class-superclasses partial))
-   :method-tys (tc:apply-ksubstitution ksubs (partial-class-method-tys partial))
-   :fundeps (partial-class-fundeps partial)))
+   :method-tys (tc:apply-ksubstitution ksubs (partial-class-method-tys partial))))
 
 ;;;
 ;;; Entrypoint
@@ -186,11 +184,13 @@
            (type parser:coalton-file file)
            (values tc:ty-class-list tc:environment))
 
-  (let* ((partial-env (make-partial-type-env :env env))
+  (let* ((renamed-classes (parser:rename-type-variables classes))
+
+         (partial-env (make-partial-type-env :env env))
 
          ;; Predefine each class in the environment
          (preds
-           (loop :for class :in classes
+           (loop :for class :in renamed-classes
 
                  :for class-name := (parser:identifier-src-name (parser:toplevel-define-class-name class))
           
@@ -211,7 +211,7 @@
 
          ;; Infer the kinds of each class
          (partial-classes
-           (loop :for class :in classes
+           (loop :for class :in renamed-classes
                  :collect (multiple-value-bind (partial-class ksubs_)
                               (infer-class-kinds class partial-env ksubs file)
                             (setf ksubs ksubs_)
@@ -266,18 +266,27 @@
                       :do (setf (gethash prefixed-name table) super-name)
                       :finally (return table))
 
+           :for fundeps
+             := (loop :for fundep :in (parser:toplevel-define-class-fundeps class)
+                      :collect (tc:make-fundep
+                                :from (mapcar #'parser:keyword-src-name (parser:fundep-left fundep))
+                                :to (mapcar #'parser:keyword-src-name (parser:fundep-right fundep))))
+
            :for class-entry
              :=  (tc:make-ty-class
                   :name class-name
                   :predicate pred
                   :superclasses (partial-class-superclasses partial)
                   :class-variables class-vars
+
                   :class-variable-map (loop :with table := (make-hash-table :test #'eq)
                                             :for var :in class-vars
                                             :for i :from 0
                                             :do (setf (gethash var table) i)
                                             :finally (return table))
-                  :fundeps (partial-class-fundeps partial)
+
+                  :fundeps fundeps
+
                   :unqualified-methods (loop :for method-ty :in (partial-class-method-tys partial)
                                              :for method :in (parser:toplevel-define-class-methods class)
 
@@ -304,18 +313,19 @@
 
            ;; Fundeps cannot be redefined
            :when (and prev-class (not (equalp (tc:ty-class-fundeps prev-class)
-                                              (partial-class-fundeps partial)))) 
-             :do (error 'tc-error
-                        :err (coalton-error
-                              :span (parser:toplevel-define-class-head-src class)
-                              :file file
-                              :message "Invalid fundep redefinition"
-                              :primary-note (format nil "unable to redefine the fudndeps of class ~S." class-name)))
+                                              fundeps))) 
+             :do (progn
+                   (error 'tc-error
+                          :err (coalton-error
+                                :span (parser:toplevel-define-class-head-src class)
+                                :file file
+                                :message "Invalid fundep redefinition"
+                                :primary-note (format nil "unable to redefine the fudndeps of class ~S." class-name))))
 
                  ;; If the class has fundeps, and this is the first
                  ;; definition of it, then initialize the fundep
                  ;; environment.
-           :when (and (not prev-class) (partial-class-fundeps partial))
+           :when (and (not prev-class) fundeps)
              :do (setf env (tc:initialize-fundep-environment env class-name))
 
            :do (setf env (tc:set-class env class-name class-entry))
@@ -467,6 +477,5 @@
       (values
        (make-partial-class
         :superclasses preds
-        :method-tys method-tys
-        :fundeps fundeps)
+        :method-tys method-tys)
        ksubs))))

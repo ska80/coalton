@@ -17,6 +17,7 @@
    (#:algo #:coalton-impl/algorithm))
   (:export
    #:rename-variables                   ; FUNCTION
+   #:rename-type-variables              ; FUNCTION
    ))
 
 (in-package #:coalton-impl/parser/renamer)
@@ -427,7 +428,7 @@
       :types (rename-type-variables (program-types program))
       :declares (program-declares program)
       :defines (rename-variables-generic% (program-defines program) ctx)
-      :classes (rename-type-variables (program-classes program))
+      :classes (program-classes program) ; Class type variables are renamed during kind inference
       :instances (rename-variables-generic% (program-instances program) ctx))
      ctx))
 
