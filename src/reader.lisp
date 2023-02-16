@@ -14,87 +14,131 @@
   "Is the Coalton reader allowed to parse the current input?
 Used to forbid reading while inside quasiquoted forms.")
 
-(defvar *coalton-inside-reader* nil)
-
-(defconstant +coalton-dot-value+ 'dot)
-
-;; TODO: Read the first form then condition on that. Don't do stream-level stuff.
-
 (defun read-coalton-toplevel-open-paren (stream char)
+  (declare (optimize (debug 2)))
+
   (unless *coalton-reader-allowed*
     (return-from read-coalton-toplevel-open-paren
-      (funcall #'#.(get-macro-character #\() stream char)))
-  
-  (let ((first-form (read stream)))
-    (case first-form
-      (coalton:coalton-toplevel
-        (let* ((pathname (or *compile-file-truename* *load-truename*))
-               (filename (if pathname (namestring pathname) "<unknown>"))
-               
-               (file-input-stream
-                 (cond
-                   ((or #+sbcl (sb-int:form-tracking-stream-p stream)
-                        nil)
-                    (open (pathname stream)))
-                   (t
-                    stream)))
-               (file (parser:make-coalton-file :stream file-input-stream :name filename)))
+      (funcall (get-macro-character #\( (named-readtables:ensure-readtable :standard)) stream char)))
 
-          (handler-case
-              (let ((program (parser:read-program stream file :mode :toplevel-macro)))
-                (multiple-value-bind (program env)
-                    (entry:entry-point program)
-                  (setf entry:*global-environment* env)
-                  `(progn
-                     #+ignore
-                     (setf entry:*global-environment* ,env)
-                     ,program)))
-            (parser:parse-error (c)
-              (set-highlight-position-for-error stream (parser:parse-error-err c))
-              (error c))
-            (tc:tc-error (c)
-              (set-highlight-position-for-error stream (tc:tc-error-err c))
-              (error c)))))
-      (coalton:coalton
-       (let* ((pathname (or *compile-file-truename* *load-truename*))
-              (filename (if pathname (namestring pathname) "<unknown>"))
+  (flet ((maybe-read-form (stream)
+           (loop :do
+             ;; On empty lists report nothing
+             (when (eq #\) (peek-char t stream))
+               (read-char stream)
+               (return (values nil nil)))
 
-              (file-input-stream
-                (cond
-                  ((or #+sbcl (sb-int:form-tracking-stream-p stream)
-                       nil)
-                   (open (pathname stream)))
-                  (t
-                   stream)))
-              (file (parser:make-coalton-file :stream file-input-stream :name filename))
+             ;; Otherwise, try to read in the next form
+             (multiple-value-bind (form type)
+                 (eclector.reader:call-as-top-level-read
+                  eclector.base:*client*
+                  (lambda ()
+                    (eclector.reader:read-maybe-nothing
+                     eclector.base:*client*
+                     stream
+                     nil 'eof))
+                  stream
+                  nil 'eof
+                  nil)
 
-              (expression
-                (handler-case
-                    (parser:read-expression stream file)
+               ;; Return the read form when valid
+               (when (eq :object type)
+                 (return (values form t)))))))
 
-                  (parser:parse-error (c)
-                    (set-highlight-position-for-error stream (parser:parse-error-err c))
-                    (error c))
-                  (tc:tc-error (c)
-                    (set-highlight-position-for-error stream (tc:tc-error-err c))
-                    (error c)))))
-         `(format t "~A" ,(format nil "~A" expression))))
+    (let ((first-form
+            (multiple-value-bind (form presentp)
+                (maybe-read-form stream)
+              (unless presentp
+                (return-from read-coalton-toplevel-open-paren
+                  nil))
+              form)))
+      (case first-form
+        (coalton:coalton-toplevel
+          (let* ((pathname (or *compile-file-truename* *load-truename*))
+                 (filename (if pathname (namestring pathname) "<unknown>"))
 
-      ;; Fall back to the default open paren reader
-      (t
-       (let* ((*coalton-inside-reader* t)
-              (*readtable* (named-readtables:ensure-readtable 'coalton:coalton))
+                 (file-input-stream
+                   (cond
+                     ((or #+sbcl (sb-int:form-tracking-stream-p stream)
+                          nil)
+                      (open (pathname stream)))
+                     (t
+                      stream)))
+                 (file (parser:make-coalton-file :stream file-input-stream :name filename)))
 
-              (rest-forms (read-delimited-list #\) stream)))
+            (handler-case
+                (let ((program (parser:read-program stream file :mode :toplevel-macro)))
+                  (multiple-value-bind (program env)
+                      (entry:entry-point program)
+                    (setf entry:*global-environment* env)
+                    `(progn
+                       #+ignore
+                       (setf entry:*global-environment* ,env)
+                       ,program)))
+              (parser:parse-error (c)
+                (set-highlight-position-for-error stream (parser:parse-error-err c))
+                (error c))
+              (tc:tc-error (c)
+                (set-highlight-position-for-error stream (tc:tc-error-err c))
+                (error c)))))
 
-         (cond
-           ((eq +coalton-dot-value+ (car rest-forms))
-            (unless (null (cddr rest-forms))
-              (error "Invalid dotted list"))
+        (coalton:coalton
+         (let* ((pathname (or *compile-file-truename* *load-truename*))
+                (filename (if pathname (namestring pathname) "<unknown>"))
 
-            (cons first-form (cadr rest-forms)))
-           (t
-            (cons first-form rest-forms))))))))
+                (file-input-stream
+                  (cond
+                    ((or #+sbcl (sb-int:form-tracking-stream-p stream)
+                         nil)
+                     (open (pathname stream)))
+                    (t
+                     stream)))
+                (file (parser:make-coalton-file :stream file-input-stream :name filename))
+
+                (expression
+                  (handler-case
+                      (parser:read-expression stream file)
+
+                    (parser:parse-error (c)
+                      (set-highlight-position-for-error stream (parser:parse-error-err c))
+                      (error c))
+                    (tc:tc-error (c)
+                      (set-highlight-position-for-error stream (tc:tc-error-err c))
+                      (error c)))))
+           `(format t "~A" ,(format nil "~A" expression))))
+
+        ;; Fall back to reading the list manually
+        (t
+         (let ((collected-forms (list first-form))
+               (dotted-context nil))
+           (loop :do
+             (handler-case
+                 (multiple-value-bind (form presentp)
+                     (maybe-read-form stream)
+
+                   (cond
+                     ((and (not presentp)
+                           dotted-context)
+                      (error "Invalid dotted list"))
+
+                     ((not presentp)
+                      (return-from read-coalton-toplevel-open-paren
+                        (nreverse collected-forms)))
+
+                     (dotted-context
+                      (when (nth-value 1 (maybe-read-form stream))
+                        (error "Invalid dotted list"))
+
+                      (return-from read-coalton-toplevel-open-paren
+                        (nreconc collected-forms form)))
+
+                     (t
+                      (push form collected-forms))))
+               (eclector.reader:invalid-context-for-consing-dot (c)
+                 (when dotted-context
+                   (error "Invalid dotted list"))
+                 (setf dotted-context t)
+                 (eclector.reader:recover c))))))))))
 
 (defun set-highlight-position-for-error (stream error)
   "Set the highlight position within the editor using implementation specific magic."
@@ -128,19 +172,10 @@ Used to forbid reading while inside quasiquoted forms.")
   (:macro-char #\( #'read-coalton-toplevel-open-paren)
   (:macro-char #\` #'(lambda (s c)
                        (let ((*coalton-reader-allowed* nil))
-                         (funcall #'#.(get-macro-character #\`) s c))))
+                         (funcall (get-macro-character #\` (named-readtables:ensure-readtable :standard)) s c))))
   (:macro-char #\, #'(lambda (s c)
                        (let ((*coalton-reader-allowed* t))
-                         (funcall #'#.(get-macro-character #\,) s c))))
-  (:macro-char #\. #'(lambda (s c)
-                       (cond
-                         ((and *coalton-inside-reader*
-                               (not (eql (peek-char nil s) (peek-char t s))))
-                          +coalton-dot-value+)
-                         (t
-                          (unread-char c s)
-                          (let ((*readtable* (named-readtables:ensure-readtable :standard)))
-                            (read s)))))))
+                         (funcall (get-macro-character #\, (named-readtables:ensure-readtable :standard)) s c)))))
 
 (defmacro coalton:coalton-toplevel (&rest forms)
   ;; lol.
