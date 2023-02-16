@@ -410,14 +410,30 @@
                   (return-from parse-loop)
 
 
-            :do (setf elem (eclector.concrete-syntax-tree:read stream nil 'eof))
+            :do (setf elem
+                      (eclector.reader:call-as-top-level-read
+                       eclector.concrete-syntax-tree::*cst-client*
+                       (lambda ()
+                         (multiple-value-call
+                             (lambda (value what &optional parse-result)
+                               (if (eq :object what)
+                                   (values parse-result value)
+                                   (values value what)))
+                           (eclector.reader:read-maybe-nothing
+                            eclector.concrete-syntax-tree::*cst-client*
+                            stream
+                            nil 'eof)))
+                       stream
+                       nil 'eof
+                       nil))
 
             :when (eq elem 'eof)
               :do (if (eq :toplevel-macro mode)
                       (error "unexpected EOF")
                       (return-from parse-loop))
 
-            :do (when (and (parse-toplevel-form elem program attributes file)
+            :do (when (and elem
+                           (parse-toplevel-form elem program attributes file)
                            (plusp (length attributes)))
                   (util:coalton-bug "parse-toplevel-form indicated that a form was parsed but did not
 consume all attributes")))
@@ -453,12 +469,28 @@ consume all attributes")))
                      :do (read-char stream)
                          (return-from parse-loop (nreverse forms))
 
-                   :do (setf elem (eclector.concrete-syntax-tree:read stream nil 'eof))
+                   :do (setf elem
+                             (eclector.reader:call-as-top-level-read
+                              eclector.concrete-syntax-tree::*cst-client*
+                              (lambda ()
+                                (multiple-value-call
+                                    (lambda (value what &optional parse-result)
+                                      (if (eq :object what)
+                                          (values parse-result value)
+                                          (values value what)))
+                                  (eclector.reader:read-maybe-nothing
+                                   eclector.concrete-syntax-tree::*cst-client*
+                                   stream
+                                   nil 'eof)))
+                              stream
+                              nil 'eof
+                              nil))
 
                    :when (eq elem 'eof)
                      :do (error "unexpected EOF")
 
-                   :do (push elem forms)))
+                   :when elem
+                     :do (push elem forms)))
            (form (cst:cstify forms :source (cons (car (cst:source (first forms)))
                                                  (cdr (cst:source (car (last forms))))))))
 

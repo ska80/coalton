@@ -14,61 +14,48 @@
   "Is the Coalton reader allowed to parse the current input?
 Used to forbid reading while inside quasiquoted forms.")
 
-(defun read-coalton-toplevel-open-paren (stream char)
-  (labels ((try-read-string (expected-string)
-             (%try-read-string (coerce expected-string 'list) nil))
-           (%try-read-string (expected taken)
-             (cond
-               ((null expected)
-                ;; Check if the next character is whitespace, hackily!
-                (not (eql (peek-char nil stream) (peek-char t stream))))
-               ((not (char-equal (car expected) (peek-char nil stream)))
-                nil)
-               (t
-                (read-char stream)
-                (cond
-                  ((%try-read-string (cdr expected) (cons (car expected) taken))
-                   t)
-                  (t
-                   (unread-char (car expected) stream)
-                   nil))))))
-    (cond
-      ((not *coalton-reader-allowed*)
-       (funcall #'#.(get-macro-character #\() stream char))
-      
-      ((try-read-string "coalton-toplevel")
-       (let* ((pathname (or *compile-file-truename* *load-truename*))
-              (filename (if pathname (namestring pathname) "<unknown>"))
-              
-              (file-input-stream
-                (cond
-                  ((or #+sbcl (sb-int:form-tracking-stream-p stream)
-                       nil)
-                   (open (pathname stream)))
-                  (t
-                   stream)))
-              (file (parser:make-coalton-file :stream file-input-stream :name filename)))
+(defvar *coalton-inside-reader* nil)
 
-         (handler-case
-             (let ((program (parser:read-program stream file :mode :toplevel-macro)))
-               (multiple-value-bind (program env)
-                   (entry:entry-point program)
-                 (setf entry:*global-environment* env)
-                 `(progn
-                    #+ignore
-                    (setf entry:*global-environment* ,env)
-                    ,program)))
-           (parser:parse-error (c)
-             (set-highlight-position-for-error stream (parser:parse-error-err c))
-             (error c))
-           (tc:tc-error (c)
-             (set-highlight-position-for-error stream (tc:tc-error-err c))
-             (error c)))))
-      
-      ((try-read-string "coalton")
-       (unless *coalton-reader-allowed*
-         (error "COALTON is not allowed in quasiquoted forms."))
-       
+(defconstant +coalton-dot-value+ 'dot)
+
+;; TODO: Read the first form then condition on that. Don't do stream-level stuff.
+
+(defun read-coalton-toplevel-open-paren (stream char)
+  (unless *coalton-reader-allowed*
+    (return-from read-coalton-toplevel-open-paren
+      (funcall #'#.(get-macro-character #\() stream char)))
+  
+  (let ((first-form (read stream)))
+    (case first-form
+      (coalton:coalton-toplevel
+        (let* ((pathname (or *compile-file-truename* *load-truename*))
+               (filename (if pathname (namestring pathname) "<unknown>"))
+               
+               (file-input-stream
+                 (cond
+                   ((or #+sbcl (sb-int:form-tracking-stream-p stream)
+                        nil)
+                    (open (pathname stream)))
+                   (t
+                    stream)))
+               (file (parser:make-coalton-file :stream file-input-stream :name filename)))
+
+          (handler-case
+              (let ((program (parser:read-program stream file :mode :toplevel-macro)))
+                (multiple-value-bind (program env)
+                    (entry:entry-point program)
+                  (setf entry:*global-environment* env)
+                  `(progn
+                     #+ignore
+                     (setf entry:*global-environment* ,env)
+                     ,program)))
+            (parser:parse-error (c)
+              (set-highlight-position-for-error stream (parser:parse-error-err c))
+              (error c))
+            (tc:tc-error (c)
+              (set-highlight-position-for-error stream (tc:tc-error-err c))
+              (error c)))))
+      (coalton:coalton
        (let* ((pathname (or *compile-file-truename* *load-truename*))
               (filename (if pathname (namestring pathname) "<unknown>"))
 
@@ -92,9 +79,22 @@ Used to forbid reading while inside quasiquoted forms.")
                     (set-highlight-position-for-error stream (tc:tc-error-err c))
                     (error c)))))
          `(format t "~A" ,(format nil "~A" expression))))
+
       ;; Fall back to the default open paren reader
       (t
-       (funcall #'#.(get-macro-character #\() stream char)))))
+       (let* ((*coalton-inside-reader* t)
+              (*readtable* (named-readtables:ensure-readtable 'coalton:coalton))
+
+              (rest-forms (read-delimited-list #\) stream)))
+
+         (cond
+           ((eq +coalton-dot-value+ (car rest-forms))
+            (unless (null (cddr rest-forms))
+              (error "Invalid dotted list"))
+
+            (cons first-form (cadr rest-forms)))
+           (t
+            (cons first-form rest-forms))))))))
 
 (defun set-highlight-position-for-error (stream error)
   "Set the highlight position within the editor using implementation specific magic."
@@ -131,7 +131,16 @@ Used to forbid reading while inside quasiquoted forms.")
                          (funcall #'#.(get-macro-character #\`) s c))))
   (:macro-char #\, #'(lambda (s c)
                        (let ((*coalton-reader-allowed* t))
-                         (funcall #'#.(get-macro-character #\,) s c)))))
+                         (funcall #'#.(get-macro-character #\,) s c))))
+  (:macro-char #\. #'(lambda (s c)
+                       (cond
+                         ((and *coalton-inside-reader*
+                               (not (eql (peek-char nil s) (peek-char t s))))
+                          +coalton-dot-value+)
+                         (t
+                          (unread-char c s)
+                          (let ((*readtable* (named-readtables:ensure-readtable :standard)))
+                            (read s)))))))
 
 (defmacro coalton:coalton-toplevel (&rest forms)
   ;; lol.
