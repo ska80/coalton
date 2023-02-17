@@ -30,6 +30,9 @@
             (:copier nil))
   (type (util:required 'type) :type tc:ty :read-only t))
 
+(defmethod make-load-form ((self pattern) &optional env)
+  (make-load-form-saving-slots self :environment env))
+
 (defun pattern-list-p (x)
   (and (alexandria:proper-list-p x)
        (every #'pattern-p x)))

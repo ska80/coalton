@@ -24,7 +24,9 @@
 
          (file (parser:program-file program))
 
-         (env *global-environment*))
+         (env *global-environment*)
+
+         (tc:*env-update-log* nil))
 
     (multiple-value-bind (type-definitions env)
         (tc:toplevel-define-type (parser:program-types program) file env)
@@ -70,11 +72,12 @@
                                            ,(or *compile-file-pathname* *load-truename*))
                                    `(error "~A was compiled in development mode but loaded in release."
                                            ,(or *compile-file-pathname* *load-truename*)))))
-                          #+ignore
-                          ,(coalton-impl/typechecker::generate-diff
-                            translation-unit
-                            env
-                            '*global-environment*)
+
+                          (let ((coalton-impl/typechecker/environment::env *global-environment*))
+                            ,@(loop :for elem :in (reverse tc:*env-update-log*)
+                                    :collect elem)
+                            (setf *global-environment* coalton-impl/typechecker/environment::env))
+
                           ,program))
                    env))))))))))
 
