@@ -22,7 +22,8 @@
       ;; Create a temp output fasl file
       (uiop:with-temporary-file (:pathname output-file
                                  :type #+ccl (pathname-type ccl:*.fasl-pathname*)
-                                       #+(not ccl) "fasl")
+                                       #+lispworks compiler::*fasl-extension-string*
+                                       #+(not (or ccl lispworks)) "fasl")
         (handler-bind
             ;; Tell the compiler to be quiet
             ((style-warning (lambda (c)

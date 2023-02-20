@@ -63,7 +63,8 @@ Returns (values SOURCE-PATHNAME COMPILED-PATHNAME)."
     :close-stream
     (uiop:with-temporary-file (:pathname output-file
                                :type #+ccl (pathname-type ccl:*.fasl-pathname*)
-                                     #+(not ccl) "fasl"
+                                     #+lispworks compiler::*fasl-extension-string*
+                                     #+(not (or ccl lispworks)) "fasl"
                                :keep t)
       (compile-file input-file :output-file output-file)
       (load output-file)

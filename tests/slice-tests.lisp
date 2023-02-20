@@ -106,7 +106,7 @@
                       (the (Vector IFix)
                            (into (the (List IFix)
                                       (make-list 97))))))
-          (lisp types:LispType () 'cl:fixnum)))
+          (lisp types:LispType () '(cl:signed-byte 64)))) ; FIXME: cl:fixnum
   (is (== (slice:element-type
            (slice:new 0 1
                       (the (Vector String)

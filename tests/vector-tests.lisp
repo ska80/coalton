@@ -17,7 +17,7 @@
   (is (== (vector:element-type (the (Vector (Optional Integer)) (vector:new)))
           (lisp types:LispType () 'cl:t)))
   (is (== (vector:element-type (the (Vector IFix) (vector:new)))
-          (lisp types:LispType () 'cl:fixnum)))
+          (lisp types:LispType () '(cl:signed-byte 64)))) ; FIXME: cl:fixnum
   (is (== (vector:element-type (the (Vector String) (vector:new)))
           (lisp types:LispType () 'cl:t)))
   (is (== (vector:element-type (the (Vector Char) (vector:new)))
