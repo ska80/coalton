@@ -23,9 +23,12 @@
 
   ;; https://github.com/Clozure/ccl/blob/ff51228259d9dbc8a9cc7bbb08858ef4aa9fe8d0/level-0/l0-hash.lisp#L1885
   #+ccl
-  (repr :native (cl:and cl:fixnum cl:unsigned-byte)) 
+  (repr :native (cl:and cl:fixnum cl:unsigned-byte))
 
-  #+(not (or sbcl allegro ccl))
+  #+lispworks
+  (repr :native (cl:unsigned-byte 60))
+
+  #+(not (or sbcl allegro ccl lispworks))
   #.(cl:error "hashing is not supported on ~A" (cl:lisp-implementation-type))
 
   (define-type Hash
@@ -52,8 +55,10 @@ The hash function must satisfy the invariant that `(== left right)` implies `(==
       #+allegro (cl:logxor lhs (cl:+ rhs #x9e3779b9 (cl:ash lhs 6) (cl:ash lhs -2)))
 
       ;; 64bit hash combination
-      ;; logand required on ccl to force the output to be a fixnum
-      #+ccl (cl:logand (cl:logxor lhs (cl:+ rhs #x517cc1b727220a95 (cl:ash lhs 6) (cl:ash lhs -2))) cl:most-positive-fixnum)))
+      ;; logand required on CCL and LispWorks to force the output to be a fixnum
+      #+(or ccl lispworks)
+      (cl:logand (cl:logxor lhs (cl:+ rhs #x517cc1b727220a95 (cl:ash lhs 6) (cl:ash lhs -2)))
+                 cl:most-positive-fixnum)))
 
   (define-instance (Eq Hash)
     (define (== a b)

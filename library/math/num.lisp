@@ -298,20 +298,20 @@
     `(define-instance (Reciprocable ,type)
        (define (/ x y)
          (cond
-           #+allegro
+           #+(or allegro lispworks)
            ((or (nan? x)
                 (nan? y))
             nan)
 
-           #+allegro
+           #+(or allegro lispworks)
            ((and (== x 0) (== y 0))
             nan)
 
-           #+allegro
+           #+(or allegro lispworks)
            ((and (positive? x) (== y 0))
             infinity)
 
-           #+allegro
+           #+(or allegro lispworks)
            ((and (negative? x) (== y 0))
             negative-infinity)
 
@@ -323,7 +323,7 @@
 
        (define (reciprocal x)
          (cond
-           #+allegro
+           #+(or allegro lispworks)
            ((== x 0)
             infinity)
 
