@@ -101,7 +101,7 @@ Restarts:
  2: [ABORT] abort thread (#<THREAD "repl-thread" RUNNING {10013A8003}>)
 ```
 
-*Coalton has **not** reached "1.0" yet. This means that, from time to time, you may have a substandard user experience. While we try to be ANSI-conforming, Coalton is currently only tested on SBCL 2.2.x, Allegro CL 10.1.* and Clozure CL 1.21.*.
+*Coalton has **not** reached "1.0" yet. This means that, from time to time, you may have a substandard user experience. While we try to be ANSI-conforming, Coalton is currently only tested on SBCL 2.2.x, Allegro CL 10.1.*, Clozure CL 1.21.* and LispWorks 8.0.x.
 
 ## Getting Started
 
