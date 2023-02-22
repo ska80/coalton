@@ -306,13 +306,13 @@
     (declare (type algo:immutable-map ctx)
              (values node-do-bind algo:immutable-map))
 
-    (let* ((new-bindings (make-local-vars (list (node-variable-name (node-do-bind-name node)))))
+    (let* ((new-bindings (make-local-vars (pattern-variables (node-do-bind-pattern node))))
 
            (new-ctx (algo:immutable-map-set-multiple ctx new-bindings)))
 
       (values
        (make-node-do-bind
-        :name (rename-variables-generic% (node-do-bind-name node) new-ctx)
+        :pattern (rename-variables-generic% (node-do-bind-pattern node) new-ctx)
         :expr (rename-variables-generic% (node-do-bind-expr node) ctx)
         :source (node-do-bind-source node))
        new-ctx)))

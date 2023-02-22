@@ -195,10 +195,10 @@ Returns a `node'.")
                                          :body out-node))))))))
                     
                     (tc:node
-                       (make-node-seq
-                        :type (node-type out-node) 
-                        :nodes (list (translate-expression body-node ctx env)
-                                     out-node)))))
+                     (make-node-seq
+                      :type (node-type out-node) 
+                      :nodes (list (translate-expression body-node ctx env)
+                                   out-node)))))
           :finally (return out-node)))
 
   (:method ((expr tc:node-abstraction) ctx env)
@@ -516,8 +516,110 @@ Returns a `node'.")
                                  :body out-node))))
             :finally (return out-node))))
 
-  ;; TODO: node-do
-  )
+  (:method ((node tc:node-do) ctx env)
+    (declare (type pred-context ctx)
+             (type tc:environment env)
+             (values node))
+
+    (let* ((classes-package (find-package "COALTON-LIBRARY/CLASSES"))
+
+           (monad-symbol (find-symbol "MONAD" classes-package))
+
+           (bind-symbol (find-symbol ">>=" classes-package))
+
+           (m-type (tc:tapp-from (tc:qualified-ty-type (tc:node-type node))))
+
+           (pred (tc:make-ty-predicate
+                  :class monad-symbol
+                  :types (list m-type)
+                  :source (tc:node-source node))))
+
+      (loop :with out-node := (translate-expression (tc:node-do-last-node node) ctx env)
+
+            :for elem :in (reverse (tc:node-do-nodes node))
+            :do (setf out-node
+                      (etypecase elem
+                        (tc:node-bind
+                         (let ((pattern (tc:node-bind-pattern elem)))
+                           (typecase (tc:node-bind-pattern elem)
+                             (tc:pattern-var
+                              (make-node-bind
+                               :type (node-type out-node)
+                               :name (tc:pattern-var-name pattern)
+                               :expr (translate-expression (tc:node-bind-expr elem) ctx env)
+                               :body out-node))
+                             (t
+                              (make-node-match
+                               :type (node-type out-node)
+                               :expr (translate-expression (tc:node-bind-expr elem) ctx env)
+                               :branches (list
+                                          (make-match-branch
+                                           :pattern (translate-pattern pattern)
+                                           :body out-node)))))))
+
+                        
+                        ;; *sad burrito noises*
+                        (tc:node-do-bind
+                         (let* ((var-type (tc:qualified-ty-type (tc:pattern-type (tc:node-do-bind-pattern elem))))
+
+                                (callback-ty (tc:make-function-type var-type (node-type out-node)))
+
+                                (var-name (gentemp)))
+
+                           (make-node-application
+                            :type (node-type out-node)
+                            :rator (make-node-variable
+                                    :type (tc:make-function-type* ; (Monad :m => m :a -> (:a -> :m :b) -> :m :b)
+                                           (list (pred-type pred env)
+                                                 (tc:qualified-ty-type (tc:node-type (tc:node-do-bind-expr elem)))
+                                                 callback-ty)
+                                           (node-type out-node))
+                                    :value bind-symbol)
+                            :rands (list
+                                    (resolve-dict pred ctx env)
+                                    (translate-expression (tc:node-do-bind-expr elem) ctx env)
+                                    (make-node-abstraction
+                                     :type callback-ty
+                                     :vars (list var-name)
+                                     :subexpr (make-node-match
+                                               :type (node-type out-node)
+                                               :expr (make-node-variable
+                                                      :type var-type
+                                                      :value var-name)
+                                               :branches (list
+                                                          (make-match-branch
+                                                           :pattern (translate-pattern
+                                                                     (tc:node-do-bind-pattern elem))
+                                                           :body out-node))))))))
+
+                        ;; Same as node-do-bind but without binding
+                        ;; the result of the computation to a
+                        ;; variable.
+                        (tc:node
+                         (let* ((var-type (tc:tapp-to (tc:qualified-ty-type (tc:node-type elem))))
+
+                                (callback-ty (tc:make-function-type var-type (node-type out-node)))
+
+                                (var-name (gentemp)))
+
+                           (make-node-application
+                            :type (node-type out-node)
+                            :rator (make-node-variable
+                                    :type (tc:make-function-type* ; (Monad :m => m :a -> (:a -> :m :b) -> :m :b)
+                                           (list (pred-type pred env)
+                                                 (tc:qualified-ty-type (tc:node-type elem))
+                                                 callback-ty)
+                                           (node-type out-node))
+                                    :value bind-symbol)
+                            :rands (list
+                                    (resolve-dict pred ctx env)
+                                    (translate-expression elem ctx env)
+                                    (make-node-abstraction
+                                     :type callback-ty
+                                     :vars (list var-name)
+                                     :subexpr out-node)))))))
+
+            :finally (return out-node)))))
 
 (defgeneric translate-pattern (pat)
   (:documentation "Translate the typechecker AST pattern to the codegen AST.")

@@ -270,7 +270,7 @@
     (funcall
      (traverse-do-bind block)
      (make-node-do-bind
-      :name (traverse (node-do-bind-name node) block)
+      :pattern (node-do-bind-pattern node)
       :expr (traverse (node-do-bind-expr node) block)
       :source (traverse (node-do-bind-source node) block))))
 

@@ -119,7 +119,7 @@
    #:node-cond-clauses                  ; ACCESSOR
    #:node-do-bind                       ; STRUCT
    #:make-node-do-bind                  ; CONSTRUCTOR
-   #:node-do-bind-name                  ; ACCESSOR
+   #:node-do-bind-pattern               ; ACCESSOR
    #:node-do-bind-expr                  ; ACCESSOR
    #:node-do-bind-source                ; ACCESSOR
    #:node-do-body-element               ; TYPE
@@ -314,9 +314,9 @@
 
 (defstruct (node-do-bind
             (:copier nil))
-  (name   (util:required 'name)   :type node-variable :read-only t)
-  (expr   (util:required 'expr)   :type node          :read-only t)
-  (source (util:required 'source) :type cons          :read-only t))
+  (pattern (util:required 'name)   :type pattern :read-only t)
+  (expr    (util:required 'expr)   :type node    :read-only t)
+  (source  (util:required 'source) :type cons    :read-only t))
 
 (deftype node-do-body-element ()
   '(or node node-bind node-do-bind))
@@ -343,7 +343,7 @@
 
 (defmethod tc:apply-substitution (subs (node node-variable))
   (declare (type tc:substitution-list subs)
-           (values node-variable &optional))
+           (values node-variable))
   (make-node-variable
    :type (tc:apply-substitution subs (node-type node))
    :source (node-source node)
@@ -351,7 +351,7 @@
 
 (defmethod tc:apply-substitution (subs (node node-literal))
   (declare (type tc:substitution-list subs)
-           (values node-literal &optional))
+           (values node-literal))
   (make-node-literal
    :type (tc:apply-substitution subs (node-type node))
    :source (node-source node)
@@ -359,7 +359,7 @@
 
 (defmethod tc:apply-substitution (subs (node node-integer-literal))
   (declare (type tc:substitution-list subs)
-           (values node-integer-literal &optional))
+           (values node-integer-literal))
   (make-node-integer-literal
    :type (tc:apply-substitution subs (node-type node))
    :source (node-source node)
@@ -367,7 +367,7 @@
 
 (defmethod tc:apply-substitution (subs (node node-bind))
   (declare (type tc:substitution-list subs)
-           (values node-bind &optional))
+           (values node-bind))
   (make-node-bind
    :pattern (tc:apply-substitution subs (node-bind-pattern node))
    :expr (tc:apply-substitution subs (node-bind-expr node))
@@ -375,14 +375,14 @@
 
 (defmethod tc:apply-substitution (subs (node node-body))
   (declare (type tc:substitution-list subs)
-           (values node-body &optional))
+           (values node-body))
   (make-node-body
    :nodes (tc:apply-substitution subs (node-body-nodes node))
    :last-node (tc:apply-substitution subs (node-body-last-node node))))
 
 (defmethod tc:apply-substitution (subs (node node-abstraction))
   (declare (type tc:substitution-list subs)
-           (values node-abstraction &optional))
+           (values node-abstraction))
   (make-node-abstraction
    :type (tc:apply-substitution subs (node-type node))
    :source (node-source node)
@@ -391,7 +391,7 @@
 
 (defmethod tc:apply-substitution (subs (node node-let-binding))
   (declare (type tc:substitution-list subs)
-           (values node-let-binding &optional))
+           (values node-let-binding))
   (make-node-let-binding
    :name (tc:apply-substitution subs (node-let-binding-name node))
    :value (tc:apply-substitution subs (node-let-binding-value node))
@@ -399,7 +399,7 @@
 
 (defmethod tc:apply-substitution (subs (node node-let))
   (declare (type tc:substitution-list subs)
-           (values node-let &optional))
+           (values node-let))
   (make-node-let
    :type (tc:apply-substitution subs (node-type node))
    :source (node-source node)
@@ -408,7 +408,7 @@
 
 (defmethod tc:apply-substitution (subs (node node-lisp))
   (declare (type tc:substitution-list subs)
-           (values node-lisp &optional))
+           (values node-lisp))
   (make-node-lisp
    :type (tc:apply-substitution subs (node-type node))
    :source (node-source node)
@@ -418,7 +418,7 @@
 
 (defmethod tc:apply-substitution (subs (node node-match-branch))
   (declare (type tc:substitution-list subs)
-           (values node-match-branch &optional))
+           (values node-match-branch))
   (make-node-match-branch
    :pattern (tc:apply-substitution subs (node-match-branch-pattern node))
    :body (tc:apply-substitution subs (node-match-branch-body node))
@@ -426,7 +426,7 @@
 
 (defmethod tc:apply-substitution (subs (node node-match))
   (declare (type tc:substitution-list subs)
-           (values node-match &optional))
+           (values node-match))
   (make-node-match
    :type (tc:apply-substitution subs (node-type node))
    :source (node-source node)
@@ -435,7 +435,7 @@
 
 (defmethod tc:apply-substitution (subs (node node-progn))
   (declare (type tc:substitution-list subs)
-           (values node-progn &optional))
+           (values node-progn))
   (make-node-progn
    :type (tc:apply-substitution subs (node-type node))
    :source (node-source node)
@@ -443,7 +443,7 @@
 
 (defmethod tc:apply-substitution (subs (node node-return))
   (declare (type tc:substitution-list subs)
-           (values node-return &optional))
+           (values node-return))
   (make-node-return
    :type (tc:apply-substitution subs (node-type node))
    :source (node-source node)
@@ -451,7 +451,7 @@
 
 (defmethod tc:apply-substitution (subs (node node-application))
   (declare (type tc:substitution-list subs)
-           (values node-application &optional))
+           (values node-application))
   (make-node-application
    :type (tc:apply-substitution subs (node-type node))
    :source (node-source node)
@@ -460,7 +460,7 @@
 
 (defmethod tc:apply-substitution (subs (node node-or))
   (declare (type tc:substitution-list subs)
-           (values node-or &optional))
+           (values node-or))
   (make-node-or
    :type (tc:apply-substitution subs (node-type node))
    :source (node-source node)
@@ -468,7 +468,7 @@
 
 (defmethod tc:apply-substitution (subs (node node-and))
   (declare (type tc:substitution-list subs)
-           (values node-and &optional))
+           (values node-and))
   (make-node-and
    :type (tc:apply-substitution subs (node-type node))
    :source (node-source node)
@@ -476,7 +476,7 @@
 
 (defmethod tc:apply-substitution (subs (node node-if))
   (declare (type tc:substitution-list subs)
-           (values node-if &optional))
+           (values node-if))
   (make-node-if
    :type (tc:apply-substitution subs (node-type node))
    :source (node-source node)
@@ -486,7 +486,7 @@
 
 (defmethod tc:apply-substitution (subs (node node-when))
   (declare (type tc:substitution-list subs)
-           (values node-when &optional))
+           (values node-when))
   (make-node-when
    :type (tc:apply-substitution subs (node-type node))
    :source (node-source node)
@@ -495,7 +495,7 @@
 
 (defmethod tc:apply-substitution (subs (node node-unless))
   (declare (type tc:substitution-list subs)
-           (values node-unless &optional))
+           (values node-unless))
   (make-node-unless
    :type (tc:apply-substitution subs (node-type node))
    :source (node-source node)
@@ -504,7 +504,7 @@
 
 (defmethod tc:apply-substitution (subs (node node-cond-clause))
   (declare (type tc:substitution-list subs)
-           (values node-cond-clause &optional))
+           (values node-cond-clause))
   (make-node-cond-clause
    :expr (tc:apply-substitution subs (node-cond-clause-expr node))
    :body (tc:apply-substitution subs (node-cond-clause-body node))
@@ -512,8 +512,26 @@
 
 (defmethod tc:apply-substitution (subs (node node-cond))
   (declare (type tc:substitution-list subs)
-           (values node-cond &optional))
+           (values node-cond))
   (make-node-cond
    :type (tc:apply-substitution subs (node-type node))
    :source (node-source node)
    :clauses (tc:apply-substitution subs (node-cond-clauses node))))
+
+(defmethod tc:apply-substitution (subs (node node-do-bind))
+  (declare (type tc:substitution-list subs)
+           (values node-do-bind))
+  (make-node-do-bind
+   :pattern (tc:apply-substitution subs (node-do-bind-pattern node))
+   :expr (tc:apply-substitution subs (node-do-bind-expr node))
+   :source (node-do-bind-source node)))
+
+(defmethod tc:apply-substitution (subs (node node-do))
+  (declare (type tc:substitution-list subs)
+           (values node-do))
+  (make-node-do
+   :type (tc:apply-substitution subs (node-type node))
+   :source (node-source node)
+   :nodes (tc:apply-substitution subs (node-do-nodes node))
+   :last-node (tc:apply-substitution subs (node-do-last-node node))))
+

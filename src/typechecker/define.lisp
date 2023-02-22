@@ -816,8 +816,8 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
                          :file file
                          :message "Type mismatch"
                          :primary-note (format nil "Declared type '~A' does not match inferred type '~A'"
-                                               declared-ty
-                                               expr-ty)))))
+                                               (tc:apply-substitution subs declared-ty)
+                                               (tc:apply-substitution subs expr-ty))))))
 
         ;; Check that declared-ty is not more specific than expr-ty
         (handler-case
@@ -829,8 +829,8 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
                          :file file
                          :message "Declared type too general"
                          :primary-note (format nil "Declared type '~A' is more general than inferred type '~A'"
-                                               declared-ty
-                                               expr-ty)))))
+                                               (tc:apply-substitution subs declared-ty)
+                                               (tc:apply-substitution subs expr-ty))))))
 
         ;; SAFETY: If declared-ty and expr-ty unify, and expr-ty is
         ;; more general than declared-ty then matching should be
@@ -1202,8 +1202,152 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
                                              (tc:apply-substitution subs expected-type)
                                              (tc:apply-substitution subs ret-ty))))))))
 
-  ;; TODO: node-do
-  )
+  (:method ((node parser:node-do-bind) expected-type subs env file)
+    (declare (type tc:ty expected-type)
+             (type tc:substitution-list subs)
+             (type tc-env env)
+             (type coalton-file file)
+             (values tc:ty tc:ty-predicate-list node-do-bind tc:substitution-list))
+
+    (multiple-value-bind (expr-ty preds expr-node subs)
+        (infer-expression-type (parser:node-do-bind-expr node)
+                               expected-type ; unify here so that expr-ty is in the form "m a"
+                               subs
+                               env
+                               file)
+
+      (multiple-value-bind (ty_ pattern subs)
+          (infer-pattern-type (parser:node-do-bind-pattern node)
+                              (tc:tapp-to (tc:apply-substitution subs expr-ty)) ; this should never fail
+                              subs
+                              env
+                              file)
+        (declare (ignore ty_))
+
+        (handler-case
+            (progn
+              (setf subs (tc:unify subs expr-ty expected-type))
+              (values
+               expr-ty
+               preds
+               (make-node-do-bind
+                :pattern pattern
+                :expr expr-node
+                :source (parser:node-do-bind-source node))
+               subs))
+          (error:coalton-type-error ()
+            (error 'tc-error
+                   :err (coalton-error
+                         :span (parser:node-do-bind-source node)
+                         :file file
+                         :message "Type mismatch"
+                         :primary-note (format nil "Expected type '~A' but got '~A'"
+                                               (tc:apply-substitution subs expected-type)
+                                               (tc:apply-substitution subs expr-ty)))))))))
+
+  (:method ((node parser:node-do) expected-type subs env file)
+    (declare (type tc:ty expected-type)
+             (type tc:substitution-list subs)
+             (type tc-env env)
+             (type coalton-file file)
+             (values tc:ty tc:ty-predicate-list node-do tc:substitution-list))
+
+    (let* (;; m-type is the type of the monad and has kind "* -> *"
+           (m-type (tc:make-variable (tc:make-kfun :from tc:+kstar+ :to tc:+kstar+)))
+
+           (classes-package (find-package "COALTON-LIBRARY/CLASSES"))
+
+           (monad-symbol (find-symbol "MONAD" classes-package))
+
+           (preds nil)
+
+           (nodes
+             (loop :for elem :in (parser:node-do-nodes node)
+                   :collect (etypecase elem 
+                              ;; Expressions are typechecked normally
+                              ;; and then unified against "m a" where
+                              ;; "a" is a fresh tyvar each time
+                              (parser:node
+                               (multiple-value-bind (ty_ preds_ node_ subs_)
+                                   (infer-expression-type elem
+                                                          (tc:make-tapp
+                                                           :from m-type
+                                                           :to (tc:make-variable))
+                                                          subs
+                                                          env
+                                                          file)
+                                 (declare (ignore ty_))
+                                 (setf preds (append preds preds_))
+                                 (setf subs subs_)
+                                 node_))
+
+                              ;; Node-binds are typechecked normally
+                              (parser:node-bind
+                               (multiple-value-bind (ty_ preds_ node_ subs_)
+                                   (infer-expression-type elem
+                                                          (tc:make-variable)
+                                                          subs
+                                                          env
+                                                          file)
+                                 (declare (ignore ty_))
+                                 (setf preds (append preds preds_))
+                                 (setf subs subs_)
+                                 node_))
+
+                              ;; Node-do-binds are typechecked and unified against "m a"
+                              (parser:node-do-bind
+                               (multiple-value-bind (ty_ preds_ node_ subs_)
+                                   (infer-expression-type elem
+                                                          (tc:make-tapp
+                                                           :from m-type
+                                                           :to (tc:make-variable))
+                                                          subs
+                                                          env
+                                                          file)
+                                 (declare (ignore ty_))
+                                 (setf preds (append preds preds_))
+                                 (setf subs subs_)
+                                 node_))))))
+
+      
+
+      (multiple-value-bind (ty preds_ last-node subs)
+          (infer-expression-type
+           (parser:node-do-last-node node)
+           (tc:make-tapp
+            :from m-type
+            :to (tc:make-variable))
+           subs
+           env
+           file)
+        (setf preds (append preds preds_))
+
+        (handler-case
+            (progn
+              (setf subs (tc:unify subs ty expected-type))
+              (values
+               ty
+               (cons
+                (tc:make-ty-predicate
+                 :class monad-symbol
+                 :types (list m-type)
+                 :source (parser:node-source node))
+                preds)
+               (make-node-do
+                :type (tc:qualify nil ty)
+                :source (parser:node-source node)
+                :nodes nodes
+                :last-node last-node) 
+               subs))
+          (error:coalton-type-error ()
+            (error 'tc-error
+                   :err (coalton-error
+                         :span (parser:node-source node)
+                         :file file
+                         :message "Type mismatch"
+                         :primary-note (format nil "Expected tyep '~A' but do expression has type '~A'"
+                                               (tc:apply-substitution subs expected-type)
+                                               (tc:apply-substitution subs ty))))))))))
 
 ;;;
 ;;; Pattern Type Inference
@@ -1267,8 +1411,8 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
                        :file file
                        :message "Type mismatch"
                        :primary-note (format nil "Expected type '~A' but pattern literal has type '~A'"
-                                             expected-type
-                                             ty)))))))
+                                             (tc:apply-substitution subs expected-type)
+                                             (tc:apply-substitution subs ty))))))))
 
   (:method ((pat parser:pattern-wildcard) expected-type subs env file)
     (declare (type tc:ty expected-type)
@@ -1351,7 +1495,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
                            :file file
                            :message "Type mismatch"
                            :primary-note (format nil "Expected type '~A' but pattern has type '~A'"
-                                                 expected-type
+                                                 (tc:apply-substitution subs expected-type)
                                                  (tc:apply-substitution subs pat-ty)))))))))))
 
 ;;;

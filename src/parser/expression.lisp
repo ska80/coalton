@@ -118,7 +118,7 @@
    #:node-cond-clauses                  ; ACCESSOR
    #:node-do-bind                       ; STRUCT
    #:make-node-do-bind                  ; CONSTRUCTOR
-   #:node-do-bind-name                  ; ACCESSOR
+   #:node-do-bind-pattern               ; ACCESSOR
    #:node-do-bind-expr                  ; ACCESSOR
    #:node-do-bind-source                ; ACCESSOR
    #:node-do-body-element               ; TYPE
@@ -425,9 +425,9 @@
 
 (defstruct (node-do-bind
             (:copier nil))
-  (name   (util:required 'name)   :type node-variable :read-only t)
-  (expr   (util:required 'expr)   :type node          :read-only t)
-  (source (util:required 'source) :type cons          :read-only t))
+  (pattern (util:required 'name)   :type pattern :read-only t)
+  (expr    (util:required 'expr)   :type node    :read-only t)
+  (source  (util:required 'source) :type cons    :read-only t))
 
 (deftype node-do-body-element ()
   '(or node node-bind node-do-bind))
@@ -1226,7 +1226,7 @@
                  :primary-note "unexpected trailing form")))
 
   (make-node-do-bind
-   :name (parse-variable (cst:first form) file)
+   :pattern (parse-pattern (cst:first form) file)
    :expr (parse-expression (cst:third form) file)
    :source (cst:source form)))
 
