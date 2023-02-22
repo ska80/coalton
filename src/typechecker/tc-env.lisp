@@ -12,7 +12,6 @@
    #:tc-env                             ; STRUCT
    #:tc-env-env                         ; ACCESSOR
    #:tc-env-ty-table                    ; ACCESSOR
-   #:tc-env-var-table                   ; ACCESSOR
    #:tc-env-add-variable                ; FUNCTION
    #:tc-env-lookup-value                ; FUNCTION
    #:tc-env-add-definition              ; FUNCTION
@@ -34,11 +33,7 @@
   (env      (util:required 'env)          :type tc:environment :read-only t)
 
   ;; Hash table mappinig variables bound in the current translation unit to types
-  (ty-table (make-hash-table :test #'eq)  :type hash-table     :read-only t)
-
-  ;; Hash table mapping type variables in predicates to the variable
-  ;; that introduced them. This is only used for error messages.
-  (var-table (make-hash-table :test #'eq) :type hash-table     :read-only t))
+  (ty-table (make-hash-table :test #'eq)  :type hash-table     :read-only t))
 
 (defun tc-env-add-variable (env name)
   "Add a variable named NAME to ENV and return the scheme."
@@ -75,9 +70,6 @@
          (ty (tc:qualified-ty-type qual-ty))
 
          (preds (tc:qualified-ty-predicates qual-ty)))
-
-    (loop :for tvar :in (tc:type-variables preds)
-          :do (setf (gethash tvar (tc-env-var-table env)) var))
 
     (values
      ty
@@ -141,16 +133,7 @@
   (maphash
    (lambda (key value)
      (setf (gethash key (tc-env-ty-table env)) (tc:apply-substitution subs value)))
-   (tc-env-ty-table env))
-
-  (loop :with var-table := (tc-env-var-table env)
-        :with keys := (alexandria:hash-table-keys var-table)
-
-        :for key :in keys
-        :for ty := (tc:apply-substitution subs key)
-
-        :when (tc:tyvar-p ty)
-          :do (setf (gethash ty var-table) (gethash key var-table))))
+   (tc-env-ty-table env)))
 
 (defmethod tc:type-variables ((env tc-env))
   "Returns all of the type variables of the types being checked in ENV. Does not return type variables from the inner main environment because it should not contain any free type variables."

@@ -3,6 +3,7 @@
    #:cl)
   (:local-nicknames
    (#:settings #:coalton-impl/settings)
+   (#:util #:coalton-impl/util)
    (#:error #:coalton-impl/error)
    (#:parser #:coalton-impl/parser)
    (#:tc #:coalton-impl/typechecker)
@@ -10,8 +11,10 @@
    (#:codegen #:coalton-impl/codegen))
   (:export
    #:*global-environment*
-   #:entry-point
-   #:file-entry-point))
+   #:entry-point                        ; FUNCTION
+   #:expression-entry-point             ; FUNCTION
+   #:file-entry-point                   ; FUNCTION
+   ))
 
 (in-package #:coalton-impl/entry)
 
@@ -84,6 +87,75 @@
 
                           ,program))
                    env))))))))))
+
+(defun expression-entry-point (node file)
+  (declare (type parser:node node)
+           (type error:coalton-file file))
+
+  (let ((env *global-environment*))
+
+    (multiple-value-bind (ty preds node subs)
+        (tc:infer-expression-type node (tc:make-variable) nil (tc:make-tc-env :env env) file)
+
+      (multiple-value-bind (preds subs)
+          (tc:solve-fundeps env preds subs)
+
+        (let* ((preds (tc:reduce-context env preds subs))
+               (subs (tc:compose-substitution-lists
+                      (tc:default-subs env nil preds)
+                      subs))
+               (preds (tc:reduce-context env preds subs))
+
+               (node (tc:apply-substitution subs node))
+               (ty (tc:apply-substitution subs ty))
+
+               (qual-ty (tc:qualify preds ty))
+               (scheme (tc:quantify (tc:type-variables qual-ty) qual-ty)))
+
+          (when (null preds)
+            (return-from expression-entry-point
+              (let ((node (codegen:optimize-node
+                           (codegen:translate-expression node nil env)
+                           env)))
+                (codegen:codegen-expression 
+                 (codegen:direct-application
+                  node
+                  (codegen:make-function-table env))
+                 nil
+                 env))))
+
+          (let* ((tvars
+                   (loop :for i :to (1- (length (remove-duplicates (tc:type-variables qual-ty)
+                                                                   :test #'equalp)))
+                         :collect (tc:make-variable)))
+                 (qual-type (tc:instantiate
+                             tvars
+                             (tc:ty-scheme-type scheme))))
+              
+
+            (error 'tc:tc-error
+                   :err (error:coalton-error
+                         :span (tc:node-source node)
+                         :file file
+                         :message "Unable to codegen"
+                         :primary-note (format nil
+                                               "expression has type ~A~{ ~S~}. ~S => ~S with unresolved constraint~A ~S"
+                                               (if settings:*coalton-print-unicode*
+                                                   "∀"
+                                                   "FORALL")
+                                               tvars
+                                               (tc:qualified-ty-predicates qual-type)
+                                               (tc:qualified-ty-type qual-type)
+                                               (if (= (length (tc:qualified-ty-predicates qual-type)) 1)
+                                                   ""
+                                                   "s")
+                                               (tc:qualified-ty-predicates qual-type))
+                         :notes
+                         (list
+                          (error:make-coalton-error-note
+                           :type :secondary
+                           :span (tc:node-source node)
+                           :message "Add a type assertion with THE to resolve ambiguity"))))))))))
 
 (defun file-entry-point (filename)
   (declare (type string filename))

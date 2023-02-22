@@ -24,7 +24,7 @@
     (unwind-protect
          (let* ((stream (make-string-input-stream toplevel-string))
 
-                (file (parser:make-coalton-file :stream stream :name "<test>"))
+                (file (error:make-coalton-file :stream stream :name "<test>"))
 
                 (program (parser:read-program stream file :mode :test)))
 
@@ -38,7 +38,7 @@
                      :for symbol := (intern (string-upcase unparsed-symbol) *package*)
 
                      :for stream := (make-string-input-stream unparsed-type)
-                     :for file := (parser:make-coalton-file :stream stream :name "<unknown>")
+                     :for file := (error:make-coalton-file :stream stream :name "<unknown>")
 
                      :for ast-type := (parser:parse-qualified-type
                                        (eclector.concrete-syntax-tree:read stream)

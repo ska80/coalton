@@ -495,7 +495,8 @@ consume all attributes")))
            (form (cst:cstify forms :source (cons (car (cst:source (first forms)))
                                                  (cdr (cst:source (car (last forms))))))))
 
-      (parse-expression form file))))
+      ;; TODO: @cole wtf?
+      (parse-expression (cst:first form) file))))
 
 (defun parse-package (form file)
   "Parses a coalton package decleration in the form of (package {name})"

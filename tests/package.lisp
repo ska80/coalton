@@ -6,13 +6,13 @@
    #:cl)
   (:local-nicknames
    (#:util #:coalton-impl/util)
+   (#:error #:coalton-impl/error)
    (#:parser #:coalton-impl/parser)
    (#:tc #:coalton-impl/typechecker)
    (#:entry #:coalton-impl/entry))
   (:export
    #:run-coalton-tests))
 
-#+broken
 (defpackage #:coalton-native-tests
   (:documentation "Tests for the COALTON system, written in Coalton.")
   (:use #:coalton-testing)
@@ -30,10 +30,8 @@
    (#:red-black/map #:coalton-library/ord-map)
    (#:result #:coalton-library/result)))
 
-#+broken
 (in-package #:coalton-native-tests)
 
-#+broken
 (coalton-fiasco-init #:coalton-tests)
 
 

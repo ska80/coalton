@@ -1,18 +1,19 @@
 (in-package #:coalton-tests)
 
-(deftest parse-files ()
+(deftest test-parser ()
   (let* ((glob (merge-pathnames "tests/parser/*.bad.coalton" (asdf:system-source-directory "coalton/tests")))
 
          (files (directory glob :resolve-symlinks nil)))
 
     (loop :for file :in files
-          :do (signals parser:parse-error
-                (parser:parse-file file))))
+          :do (with-open-file (stream file)
+                (signals parser:parse-error
+                  (parser:read-program stream (error:make-coalton-file :stream stream :name (namestring file)) :mode :file)))))
 
   (let* ((glob (merge-pathnames "tests/parser/*.good.coalton" (asdf:system-source-directory "coalton/tests")))
 
          (files (directory glob :resolve-symlinks nil)))
 
     (loop :for file :in files
-          :for program := (parser:parse-file file)
-          :do (parser:rename-variables program))))
+          :do (with-open-file (stream file)
+                (parser:read-program stream (error:make-coalton-file :stream stream :name (namestring file)) :mode :file)))))

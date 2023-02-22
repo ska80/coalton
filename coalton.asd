@@ -281,13 +281,10 @@
   :author "Coalton contributors (https://github.com/coalton-lang/coalton)"
   :license "MIT"
   :depends-on (#:coalton
-               #+ignore
                #:coalton/library/big-float
-               #+ignore
                #:coalton/testing
                #:fiasco
                #:quil-coalton/tests
-               #+ignore
                #:thih-coalton/tests)
   :perform (asdf:test-op (o s)
                          (unless (symbol-call :coalton-tests :run-coalton-tests)
@@ -297,23 +294,16 @@
   :components ((:file "package")
                (:file "utilities")
                (:file "tarjan-scc-tests")
+               (:file "parser-tests")
                (:file "type-inference-tests")
                (:file "fundep-tests")
-               #+broken
                (:file "fundep-fib-test")
-               #+broken
                (:file "runtime-tests")
-               #+broken
                (:file "environment-persist-tests")
-               #+broken
                (:file "slice-tests")
-               #+broken
                (:file "float-tests")
-               #+broken
                (:file "quantize-tests")
-               #+broken
                (:file "hashtable-tests")
-               #+broken
                (:file "iterator-tests")
                #+broken
                (:file "addressable-tests")
@@ -331,5 +321,4 @@
                (:file "list-tests")
                #+broken
                (:file "red-black-tests")
-               #+broken
-               (:file "parser-tests")))
+               ))

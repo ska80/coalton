@@ -265,14 +265,14 @@
 
   (:method ((node node-do-bind) block)
     (declare (type traverse-block block)
-             (values node &optional))
+             (values node-do-bind &optional))
 
     (funcall
      (traverse-do-bind block)
      (make-node-do-bind
       :pattern (node-do-bind-pattern node)
       :expr (traverse (node-do-bind-expr node) block)
-      :source (traverse (node-do-bind-source node) block))))
+      :source (node-do-bind-source node))))
 
   (:method ((node node-do) block)
     (declare (type traverse-block block)

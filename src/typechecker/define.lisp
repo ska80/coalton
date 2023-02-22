@@ -40,6 +40,7 @@
    #:toplevel-define-monomorphize       ; ACCESSOR
    #:toplevel-define-list               ; TYPE
    #:toplevel-define                    ; FUNCTION
+   #:infer-expression-type              ; FUNCTION
    #:infer-expl-binging-type            ; FUNCTION
    #:attach-explicit-binding-type       ; FUNCTION
    ))
@@ -266,8 +267,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
            (pred (tc:make-ty-predicate :class num :types (list tvar) :source (parser:node-source node))))
 
       ;; TODO: error out here better if NUM is not defined
-
-      (setf (gethash tvar (tc-env-var-table env)) node)
+      ;; lol
 
       (handler-case
           (progn

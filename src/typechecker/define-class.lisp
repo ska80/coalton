@@ -322,10 +322,7 @@
                                 :message "Invalid fundep redefinition"
                                 :primary-note (format nil "unable to redefine the fudndeps of class ~S." class-name))))
 
-                 ;; If the class has fundeps, and this is the first
-                 ;; definition of it, then initialize the fundep
-                 ;; environment.
-           :when (and (not prev-class) fundeps)
+           :when fundeps
              :do (setf env (tc:initialize-fundep-environment env class-name))
 
            :do (setf env (tc:set-class env class-name class-entry))
