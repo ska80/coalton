@@ -20,80 +20,35 @@
   (let ((*package* (make-package (or (and fiasco::*current-test*
                                           (fiasco::name-of fiasco::*current-test*))
                                      "COALTON-TEST-COMPILE-PACKAGE")
-                                 :use '("COALTON" #+broken "COALTON-PRELUDE" "COALTON-LIBRARY/CLASSES"))))
+                                 :use '("COALTON" "COALTON-PRELUDE"))))
     (unwind-protect
          (let* ((stream (make-string-input-stream toplevel-string))
 
-                ;; Setup eclector readtable
-                (eclector.readtable:*readtable*
-                  (eclector.readtable:copy-readtable eclector.readtable:*readtable*))
+                (file (parser:make-coalton-file :stream stream :name "<test>"))
 
-                ;; Read unspecified floats as double floats
-                (*read-default-float-format* 'double-float)
+                (program (parser:read-program stream file :mode :test)))
 
-                (env coalton-impl/entry::*global-environment*)
+           (multiple-value-bind (program env)
+               (entry:entry-point program)
+             (declare (ignore program))
+             (setf entry:*global-environment* env)
+             
+             (when expected-types
+               (loop :for (unparsed-symbol . unparsed-type) :in expected-types
+                     :for symbol := (intern (string-upcase unparsed-symbol) *package*)
 
-                (file (parser:make-coalton-file :stream stream :name "<unknown>"))
+                     :for stream := (make-string-input-stream unparsed-type)
+                     :for file := (parser:make-coalton-file :stream stream :name "<unknown>")
 
-                (program (parser:make-program :package *package* :file file))
+                     :for ast-type := (parser:parse-qualified-type
+                                       (eclector.concrete-syntax-tree:read stream)
+                                       file)
+                     :for parsed-type := (tc:parse-ty-scheme ast-type env file)
+                     :do (is (equalp
+                              (tc:lookup-value-type env symbol)
+                              parsed-type)))))
 
-                (attributes (make-array 0 :adjustable t :fill-pointer t)))
-           (progn
-             (loop :named parse-loop
-                   :with elem := nil
-
-                   :do (setf elem (eclector.concrete-syntax-tree:read stream nil 'eof))
-
-                   :when (eq elem 'eof)
-                     :do (return-from parse-loop)
-
-                   :do (when (and (parser:parse-toplevel-form elem program attributes file)
-                                  (plusp (length attributes)))
-                         (util:coalton-bug "parse-toplevel-form indicated that a form was parsed but did not consume all attributes")))
-
-             (unless (zerop (length attributes))
-               (error 'parse-error
-                      :err (parser:coalton-error
-                            :span (cst:source (cdr (aref attributes 0)))
-                            :file file
-                            :message "Orphan attribute"
-                            :primary-note "attribute must be attached to another form"))))
-
-           (setf (parser:program-types program) (nreverse (parser:program-types program)))
-           (setf (parser:program-declares program) (nreverse (parser:program-declares program)))
-           (setf (parser:program-defines program) (nreverse (parser:program-defines program)))
-           (setf (parser:program-classes program) (nreverse (parser:program-classes program)))
-
-
-           (setf program (parser:rename-variables program))
-
-           (multiple-value-bind (type-definitions env)
-               (tc:toplevel-define-type (parser:program-types program) file env)
-             (declare (ignore type-definitions))
-
-             (let ((env
-                     (tc:toplevel-define
-                      (parser:program-defines program)
-                      (parser:program-declares program)
-                      file
-                      env)))
-
-               (when expected-types
-                 (loop :for (unparsed-symbol . unparsed-type) :in expected-types
-                       :for symbol := (intern (string-upcase unparsed-symbol) *package*)
-
-                       :for stream := (make-string-input-stream unparsed-type)
-                       :for file := (parser:make-coalton-file :stream stream :name "<unknown>")
-
-                       :for ast-type := (parser:parse-qualified-type
-                                         (eclector.concrete-syntax-tree:read stream)
-                                         file)
-                       :for parsed-type := (tc:parse-ty-scheme ast-type env file)
-                       :do (is (equalp
-                                (tc:lookup-value-type env symbol)
-                                parsed-type)))))
-
-             (values)))
+           (values))
       (delete-package *package*))))
 
 (defun compile-and-load-forms (coalton-forms)

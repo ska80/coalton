@@ -7,7 +7,8 @@
   (:local-nicknames
    (#:util #:coalton-impl/util)
    (#:parser #:coalton-impl/parser)
-   (#:tc #:coalton-impl/typechecker))
+   (#:tc #:coalton-impl/typechecker)
+   (#:entry #:coalton-impl/entry))
   (:export
    #:run-coalton-tests))
 
