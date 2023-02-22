@@ -52,7 +52,7 @@
 (defmacro debug-log (&rest vars)
   "Log names and values of VARS to standard output"
   `(format t
-           ,(format nil "~{~A: ~~A~~%~}" vars)
+           ,(format nil "~&~{~A: ~~A~~%~}" vars)
            ,@vars))
 
 (defmacro debug-tap (var)

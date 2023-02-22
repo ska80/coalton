@@ -172,14 +172,15 @@ Used to forbid reading while inside quasiquoted forms.")
                          (funcall (get-macro-character #\, (named-readtables:ensure-readtable :standard)) s c)))))
 
 (defmacro coalton:coalton-toplevel (&rest forms)
-  ;; lol.
   (let ((*readtable* (named-readtables:ensure-readtable 'coalton:coalton))
         (*compile-file-truename*
-          (pathname (format nil "COALTON-TOPLEVEL (~A)" *compile-file-truename*))))
-    (cl:read-from-string (cl:format cl:nil "(COALTON-TOPLEVEL ~{~S~%~})" forms))))
+          (pathname (format nil "COALTON-TOPLEVEL (~A)" *compile-file-truename*)))
+        (stream (make-string-input-stream (cl:format cl:nil "(COALTON-TOPLEVEL ~{~S~%~})" forms))))
+    (cl:read stream)))
 
 (defmacro coalton:coalton (&rest forms)
   (let ((*readtable* (named-readtables:ensure-readtable 'coalton:coalton))
         (*compile-file-truename*
-          (pathname (format nil "COALTON (~A)" *compile-file-truename*))))
-    (cl:read-from-string (cl:format cl:nil "(COALTON ~{~S~%~})" forms))))
+          (pathname (format nil "COALTON (~A)" *compile-file-truename*)))
+        (stream (make-string-input-stream (cl:format cl:nil "(COALTON ~{~S~%~})" forms))))
+    (cl:read stream)))
