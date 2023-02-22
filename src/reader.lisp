@@ -4,6 +4,7 @@
   (:local-nicknames
    (#:cst #:concrete-syntax-tree)
    (#:util #:coalton-impl/util)
+   (#:error #:coalton-impl/error)
    (#:parser #:coalton-impl/parser)
    (#:tc #:coalton-impl/typechecker)
    (#:entry #:coalton-impl/entry)))
@@ -64,7 +65,7 @@ Used to forbid reading while inside quasiquoted forms.")
                       (open (pathname stream)))
                      (t
                       stream)))
-                 (file (parser:make-coalton-file :stream file-input-stream :name filename)))
+                 (file (error:make-coalton-file :stream file-input-stream :name filename)))
 
             (handler-case
                 (let ((program (parser:read-program stream file :mode :toplevel-macro)))
@@ -93,7 +94,7 @@ Used to forbid reading while inside quasiquoted forms.")
                      (open (pathname stream)))
                     (t
                      stream)))
-                (file (parser:make-coalton-file :stream file-input-stream :name filename))
+                (file (error:make-coalton-file :stream file-input-stream :name filename))
 
                 (expression
                   (handler-case
@@ -160,7 +161,7 @@ Used to forbid reading while inside quasiquoted forms.")
     (let* ((file-offset
              (- (sb-impl::fd-stream-get-file-position stream)
                 (file-position stream)))
-           (loc (parser:coalton-error-location error)))
+           (loc (error:coalton-error-location error)))
       (setf (sb-impl::fd-stream-misc stream)
             (lambda (stream operation arg1)
               (if (= (sb-impl::%stream-opcode :get-file-position) operation)

@@ -1,6 +1,7 @@
 (defpackage #:coalton-impl/parser/types
   (:use
    #:cl
+   #:coalton-impl/error
    #:coalton-impl/parser/base)
   (:shadowing-import-from
    #:coalton-impl/parser/base

@@ -583,7 +583,7 @@ Mutually recursive bindings must be either all functions or all constructor appl
                      "are")
                  (ambigious-method-variables-type c)))))))
 
-(define-condition invalid-fundep-change (error:coalton-error)
+(define-condition invalid-fundep-change (error:coalton-base-error)
   ((name :initarg :name
          :reader invalid-fundep-change-name
          :type symbol))

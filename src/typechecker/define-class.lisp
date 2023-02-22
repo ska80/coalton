@@ -39,7 +39,7 @@
 
 (defun toplevel-define-class (classes file env)
   (declare (type parser:toplevel-define-class-list classes)
-           (type parser:coalton-file file)
+           (type error:coalton-file file)
            (type tc:environment env)
            (values tc:ty-class-list tc:environment))
 
@@ -181,7 +181,7 @@
 (defun infer-class-scc-kinds (classes env file)
   (declare (type parser:toplevel-define-class-list classes)
            (type tc:environment env)
-           (type parser:coalton-file file)
+           (type error:coalton-file file)
            (values tc:ty-class-list tc:environment))
 
   (let* ((renamed-classes (parser:rename-type-variables classes))
@@ -371,7 +371,7 @@
   (declare (type parser:toplevel-define-class class)
            (type partial-type-env env)
            (type tc:ksubstitution-list ksubs)
-           (type parser:coalton-file file)
+           (type error:coalton-file file)
            (values partial-class tc:ksubstitution-list))
 
   (let ((var-names (mapcar #'parser:keyword-src-name (parser:toplevel-define-class-vars class))))

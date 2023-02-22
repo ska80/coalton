@@ -84,12 +84,11 @@
                              (:file "define-instance")
                              (:file "translation-unit")
                              (:file "package")))
-               #+broken
                (:module "analysis"
                 :serial t
                 :components ((:file "pattern-exhaustiveness")
+                             (:file "analysis")
                              (:file "package")))
-
                (:module "codegen"
                 :serial t
                 :components ((:file "pattern")

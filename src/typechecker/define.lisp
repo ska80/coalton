@@ -199,7 +199,7 @@
                                                    :name name
                                                    :type :value
                                                    :docstring (parser:toplevel-define-docstring define)
-                                                   :location (parser:coalton-file-name file)))))
+                                                   :location (error:coalton-file-name file)))))
 
         (values
          (tc:apply-substitution subs binding-nodes)

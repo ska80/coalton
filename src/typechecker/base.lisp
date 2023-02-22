@@ -2,7 +2,7 @@
   (:use
    #:cl)
   (:import-from
-   #:coalton-impl/parser/base
+   #:coalton-impl/error
    #:coalton-file
    #:coalton-error
    #:make-coalton-error-note
@@ -14,7 +14,7 @@
    #:make-coalton-error-help)
   (:local-nicknames
    (#:util #:coalton-impl/util)
-   (#:parser #:coalton-impl/parser))
+   (#:error #:coalton-impl/error))
   (:export
    #:tc-error                           ; CONDITION
    #:tc-error-err                       ; ACCESSOR
@@ -27,9 +27,9 @@
 (define-condition tc-error (error)
   ((err :reader tc-error-err
         :initarg :err
-        :type parser:coalton-error))
+        :type error:coalton-error))
   (:report (lambda (c s)
-             (parser:display-coalton-error s (tc-error-err c)))))
+             (error:display-coalton-error s (tc-error-err c)))))
 
 (defun check-duplicates (elems f callback)
   (declare (type list elems)

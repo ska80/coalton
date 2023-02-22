@@ -13,19 +13,24 @@
    #:pattern                            ; STRUCT
    #:pattern-type                       ; ACCESSOR
    #:pattern-source                     ; ACCESSOR
+   #:pattern-list-p                     ; FUNCTION
    #:pattern-list                       ; TYPE
    #:pattern-var                        ; STRUCT
    #:make-pattern-var                   ; ACCESSOR
    #:pattern-var-name                   ; ACCESSOR
+   #:pattern-var-p                      ; FUNCTION
    #:pattern-literal                    ; STRUCT
    #:make-pattern-literal               ; CONSTRUCTOR
    #:pattern-literal-value              ; ACCESSOR
+   #:pattern-literal-p                  ; FUNCTION
    #:pattern-wildcard                   ; STRUCT
    #:make-pattern-wildcard              ; ACCESSOR
+   #:pattern-wildcard-p                 ; FUNCTION
    #:pattern-constructor                ; STRUCT
    #:make-pattern-constructor           ; CONSTRUCTOR
    #:pattern-constructor-name           ; ACCESSOR
    #:pattern-constructor-patterns       ; ACCESSOR
+   #:pattern-constructor-p              ; FUNCTION
    #:parse-pattern                      ; FUNCTION
    #:pattern-variables                  ; FUNCTION
    ))

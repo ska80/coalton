@@ -7,7 +7,7 @@
    #:coalton-impl/parser/expression
    #:coalton-impl/parser/parser)
   (:shadowing-import-from
-   :coalton-impl/parser/base
+   #:coalton-impl/parser/base
    #:parse-error)
   (:import-from
    #:coalton-impl/parser/collect

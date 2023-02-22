@@ -3,8 +3,10 @@
    #:cl)
   (:local-nicknames
    (#:settings #:coalton-impl/settings)
+   (#:error #:coalton-impl/error)
    (#:parser #:coalton-impl/parser)
    (#:tc #:coalton-impl/typechecker)
+   (#:analysis #:coalton-impl/analysis)
    (#:codegen #:coalton-impl/codegen))
   (:export
    #:*global-environment*
@@ -58,6 +60,8 @@
                        :specializations nil ;; TODO
                        )))
 
+                (analysis:analyze-translation-unit translation-unit env file)
+
                 (multiple-value-bind (program env)
                     (codegen:compile-translation-unit translation-unit env)
 
@@ -85,7 +89,7 @@
   (declare (type string filename))
 
   (with-open-file (file-stream filename :if-does-not-exist :error)
-    (let ((coalton-file (parser:make-coalton-file
+    (let ((coalton-file (error:make-coalton-file
                          :stream file-stream
                          :name filename)))
       (multiple-value-bind (code env)

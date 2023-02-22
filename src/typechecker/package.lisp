@@ -3,6 +3,7 @@
    #:coalton-impl/typechecker/stage-1
    #:coalton-impl/typechecker/pattern
    #:coalton-impl/typechecker/expression
+   #:coalton-impl/typechecker/traverse
    #:coalton-impl/typechecker/toplevel
    #:coalton-impl/typechecker/binding
    #:coalton-impl/typechecker/partial-type-env
