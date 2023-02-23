@@ -544,7 +544,7 @@ consume all attributes")))
          (package (find-package package-name)))
 
     (unless package
-      (setf package (make-package package-name :use '("COALTON" #+broken "COALTON-PRELUDE" "COALTON-LIBRARY/CLASSES"))))
+      (setf package (make-package package-name :use '("COALTON" "COALTON-PRELUDE" "COALTON-LIBRARY/CLASSES"))))
 
     package))
 

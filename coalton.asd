@@ -109,16 +109,12 @@
                              (:file "optimizer")
                              (:file "program")
                              (:file "package")))
-               #+broken
                (:file "unlock-package" :if-feature :sb-package-locks)
                (:file "entry")
                (:file "reader")
-               #+broken
-               (:file "debug")
-               #+broken
+               ;; TOOD: add debug stuff back lol
                (:file "faux-macros")
                (:file "language-macros")
-               #+broken
                (:file "lock-package" :if-feature :sb-package-locks)))
 
 (asdf:defsystem #:coalton/library
@@ -164,7 +160,6 @@
                (:file "optional")
                (:file "list")
                (:file "result")
-               (:file "addressable")
                (:file "stage-1")
                (:file "cell")
                (:file "vector")
@@ -311,5 +306,4 @@
                (:file "recursive-let-tests")
                (:file "class-tests")
                (:file "list-tests")
-               (:file "red-black-tests")
-               ))
+               (:file "red-black-tests")))

@@ -4,7 +4,13 @@
 ;;;; co.) macro, that aren't actually valid as a toplevel form in
 ;;;; Lisp.
 
-(in-package #:coalton-impl)
+(defpackage #:coalton-impl/faux-macros
+  (:use
+   #:cl)
+  (:local-nicknames
+   (#:rt #:coalton-impl/runtime)))
+
+(in-package #:coalton-impl/faux-macros)
 
 (defun error-coalton-only (name)
   (error "The operator ~S is only valid in a Coalton expression." name))

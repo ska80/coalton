@@ -6,6 +6,7 @@
   (:export
    #:trace
    #:traceObject
+   #:unsafe-pointer-eq?
    #:fix
    #:id
    #:const
@@ -41,6 +42,11 @@
     (progn
       (lisp :a (str item) (cl:format cl:t "~A: ~A~%" str item))
       Unit))
+
+  (declare unsafe-pointer-eq? (:a -> :a -> Boolean))
+  (define (unsafe-pointer-eq? a b)
+    (lisp Boolean (a b)
+      (to-boolean (cl:eq a b))))
 
   ;;
   ;; Function combinators

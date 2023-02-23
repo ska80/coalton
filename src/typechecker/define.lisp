@@ -1796,6 +1796,8 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
              (attach-explicit-binding-type binding-node fresh-qual-type)
              subs)))))))
 
+;; TODO: check if things are incorrectly recursive
+
 (defun infer-impls-binding-type (bindings subs env file)
   "Infer the type's of BINDINGS and then qualify those types into schemes."
   (declare (type (or parser:toplevel-define-list parser:node-let-binding-list) bindings)

@@ -207,7 +207,6 @@
 (deftest test-monomorphism-restriction ()
   ;; Check that functions defined as a lambda are not subject to the
   ;; monomorphism restriction
-  #+broken
   (check-coalton-types
    "(define-class (Show :a))
 
@@ -222,7 +221,7 @@
         (show b)))"
 
    '("f" . "(Show :a => :a -> String)")
-   '("g" . "(Show :a => :a -> String")))
+   '("g" . "(Show :a => :a -> String)")))
 
 (deftest test-type-classes ()
   ;; Check that type constrains are propegated
@@ -232,7 +231,6 @@
    '("f" . "(Eq :a => :a -> :a -> Boolean)"))
 
 
-  #+broken
   (check-coalton-types
    "(define-class (Eq_ :a)
       (==_ (:a -> :a -> Boolean)))
@@ -251,23 +249,22 @@
       (==_ (singleton x) (singleton y)))"
 
    '("a" . "Boolean")
-   '("g" . "(Eq (List :a) => List :a -> :a -> Boolean"))
+   '("g" . "(Eq_ (List :a) => List :a -> :a -> Boolean)"))
 
 
-  #+broken
-  (signals tc:coalton-type-error
-    (run-coalton-typechecker
-     '((coalton:define-class (Eq_ :a)
-         (== (:a -> :a -> coalton:Boolean)))
+  (signals tc:tc-error
+    (check-coalton-types
+     "(define-class (Eq_ :a)
+        (== (:a -> :a -> coalton:Boolean)))
 
-       (coalton:define-instance (Eq_ :a => (Eq_ (coalton:List :a)))
-         (coalton:define (== a b) coalton:False))
+      (define-instance (Eq_ :a => Eq_ (List :a))
+         (define (== a b) False))
 
-       (coalton:define-type Color Red Blue Green)
+      (define-type Color Red Blue Green)
 
-       (coalton:declare f ((coalton:List Color) -> coalton:Boolean))
-       (coalton:define (f a b)
-         (== a b))))))
+      (declare f (List Color -> Boolean))
+      (define (f a b)
+         (== a b))")))
 
 (deftest test-typeclass-polymorphic-recursion ()
   ;; Check that polymorphic recursion is possible
@@ -281,128 +278,86 @@
    '("f" . "(Eq :a => :a -> :a -> Boolean)"))
 
   ;; Check that polymorphic recursion is not possible without an explicit binding
-  #+broken
-  (signals tc:coalton-type-error
-    (run-coalton-typechecker
-     '((coalton:define-class (Eq_ :a)
-        (== (:a -> :a -> coalton:Boolean)))
+  (signals tc:tc-error
+    (check-coalton-types
+     "(define-class (Eq_ :a)
+        (== (:a -> :a -> Boolean)))
 
-       (coalton:define-instance (Eq_ :a => (Eq_ (coalton:List :a)))
-        (coalton:define (== a b) coalton:False))
+      (define-instance (Eq_ :a => Eq_ (List :a))
+      (define (== a b) False))
 
-       (coalton:define (f a b)
-         (coalton:match (== a b)
-           ((coalton:True) coalton:True)
-           ((coalton:False)
-            (f (coalton-prelude:singleton a)
-               (coalton-prelude:singleton b)))))))))
+      (define (f a b)
+        (match (== a b)
+          ((True) True)
+          ((False)
+           (f (singleton a)
+             (singleton b)))))")))
 
-#+broken
 (deftest test-typeclass-definition-constraints ()
   ;; Check that typeclasses cannot have additional constrains defined in a method
   ;;
   ;; this is a stylistic decision and not a technical limitation
-  (signals ast:coalton-parse-error
-    (run-coalton-typechecker
-    '((coalton:define-class (Test :a)
-       (test (coalton-prelude::Eq :a => (:a -> :a)))))))
+  (signals tc:tc-error
+    (check-coalton-types
+     "(define-class (Test :a)
+        (test (Eq :a => :a -> :a)))"))
 
   ;; Check that typeclass methods can constrain other variables
-  (run-coalton-typechecker
-   '((coalton:define-class (Test :a)
-      (test (coalton-prelude::Eq :b => (:a -> :b)))))))
+  (check-coalton-types
+   "(define-class (Test :a)
+      (test (Eq :b => :a -> :b)))"))
 
 
-#+broken
 (deftest test-typeclass-flexible-instances ()
-  (run-coalton-typechecker
-   '((coalton:define-class (Eq_ :a)
-       (== (:a -> :a -> coalton:Boolean)))
+  (check-coalton-types
+   "(define-class (Eq_ :a)
+      (==? (:a -> :a -> Boolean)))
 
-     (coalton:define-instance (Eq_ :a => (Eq_ (coalton-prelude:Tuple :a Integer)))
-       (coalton:define (== a b) coalton:False))
+     (define-instance (Eq_ :a => Eq_ (Tuple :a Integer))
+       (define (==? a b) False))
 
-     (coalton:define-instance (Eq_ Integer)
-       (coalton:define (== a b) coalton:False))
+     (define-instance (Eq_ Integer)
+       (define (==? a b) False))
 
-     (coalton:declare f
-      ((coalton-prelude:Tuple Integer Integer) ->
-       (coalton-prelude:Tuple Integer Integer) ->
-       coalton:Boolean))
-     (coalton:define (f a b)
-       (== a b)))))
+     (declare f
+      (Tuple Integer Integer ->
+       Tuple Integer Integer ->
+       Boolean))
+     (define (f a b)
+       (==? a b))"))
 
-#+broken
 (deftest test-typeclass-overlapping-checks ()
   ;; Check than non overlapping instances can be defined
+  ;; TODO: wrap this error
   (signals tc:overlapping-instance-error
-    (run-coalton-typechecker
-     '((coalton:define-class (Eq_ :a)
-        (== (:a -> :a -> coalton:Boolean)))
+    (check-coalton-types
+     "(define-class (Eq_ :a)
+        (==? (:a -> :a -> Boolean)))
 
-       (coalton:define-instance (Eq_ :a => (Eq_ (coalton-prelude:Tuple :a Integer)))
-        (coalton:define (== a b) coalton:False))
+      (define-instance (Eq_ :a => Eq_ (Tuple :a Integer))
+        (define (==? a b) False))
 
-       (coalton:define-instance (Eq_ :a => (Eq_ (coalton-prelude:Tuple String :a)))
-        (coalton:define (== a b) coalton:False))))))
+       (define-instance (Eq_ :a => Eq_ (Tuple String :a))
+        (define (==? a b) False))")))
 
-#+broken
 (deftest test-typeclass-cyclic-superclass-checks ()
-  (signals tc:cyclic-class-definitions-error
-    (run-coalton-typechecker
-     '((coalton:define-class ((TestClassA :a) => (TestClassB :a)))
-       (coalton:define-class ((TestClassB :a) => (TestClassA :a))))))
+  (signals tc:tc-error
+    (check-coalton-types
+     "(define-class (TestClassA :a => TestClassB :a))
+      (define-class (TestClassB :a => TestClassA :a))"))
 
-  (signals tc:cyclic-class-definitions-error
-    (run-coalton-typechecker
-     '((coalton:define-class (TestClassB :b)
-        (example-method ((TestClassA :a) => (:a -> :b))))
-       (coalton:define-class ((TestClassB :a) => (TestClassA :a))))))
+  (signals tc:tc-error
+    (check-coalton-types
+     "(define-class (TestClassB :b)
+        (example-method (TestClassA :a => :a -> :b)))
+      (define-class (TestClassB :a => TestClassA :a))"))
 
-  ;; NOTE: This is allowed in Haskell 98
-  (signals tc:cyclic-class-definitions-error
-    (run-coalton-typechecker
-     '((coalton:define-class (TestClassA :a)
-        (example-method ((TestClassA :b) => (:a -> :b))))))))
-
-#+broken
-(deftest test-hkt ()
   (check-coalton-types
-   '((coalton:define-class (Functor :f)
-      (fmap ((:a -> :b) -> (:f :a) -> (:f :b))))
-
-     (coalton:define-instance (Functor coalton:List)
-      (coalton:define fmap coalton-prelude::undefined))
-     (coalton:define-instance (Functor (coalton-prelude:Tuple :a))
-      (coalton:define fmap coalton-prelude::undefined))
-
-     (coalton:define xs (coalton:make-list 1 2 3))
-
-     (coalton:declare print-int (Integer -> String))
-     (coalton:define (print-int x)
-       "")
-
-     (coalton:define ys (fmap print-int xs)))
-
-   '((ys . (coalton:List String)))))
-
-#+broken
-(deftest test-seq ()
-  (check-coalton-types
-   '((coalton:define-class (Show :a))
-
-     (coalton:declare show (Show :a => (:a -> String)))
-     (coalton:define (show x) "not impl")
-
-     (coalton:define (f x)
-       (coalton::seq
-        (coalton-prelude:Ok "hello")
-        (coalton-prelude:map (coalton-prelude:+ 1) (coalton:make-list 1 2 3 4))
-        (show x))))
-   '((f . (Show :a => (:a -> String))))))
-
+   "(define-class (TestClassA :a)
+     (example-method (TestClassA :b => :a -> :b)))"))
 
 (deftest test-the ()
+  #+broken
   (check-coalton-types
    "(define (f a b)
       ((the (Integer -> Integer -> Boolean) ==) a b))"
@@ -411,10 +366,10 @@
 
   #+broken
   (check-coalton-types
-   '((coalton:define (f a b)
-       ((coalton:the ((coalton-prelude:Eq :a) => (:a -> :a -> coalton:Boolean)) coalton-prelude:==)
-        a b)))
-   '((f . ((coalton-prelude:Eq :a) => (:a -> :a -> coalton:Boolean)))))
+   "(define (f a b)
+      (the (Eq :a => (:a -> :a -> Boolean)) ==)
+        a b)"
+   '("f" . "(Eq :a => :a -> :a -> Boolean)"))
 
   (check-coalton-types
    "(define x (the U32 (+ 1 2)))"
@@ -431,10 +386,9 @@
    '("f" . "(Num :b => :a -> Tuple :b :a)")))
 
 (deftest test-function-definition-shorthand ()
-  #+broken
   (check-coalton-types
-   '((coalton:define f (fn () 5)))
-   '((f . (coalton-library/classes:Num :a => coalton:Unit -> :a)))))
+   "(define f (fn () 5))"
+   '("f" . "(Num :a => Unit -> :a)")))
 
 (deftest test-function-implicit-progn ()
   (check-coalton-types
@@ -504,28 +458,7 @@
         (into (into x)))"))
 
   ;; Check that superclasses of Num are defaulted
-  #+broken
   (check-coalton-types
    "(define x (even? 2))"
 
    '("x" . "Boolean")))
-
-  #+ignore
-(deftest test-bind ()
-  (check-coalton-types
-   '((coalton:define x
-       (coalton::bind x 5 (coalton-prelude:+ x 1))))
-   '((x . Integer)))
-
-  (check-coalton-types
-   '((coalton:define (f x)
-       (coalton::bind x (coalton-prelude:+ x 1) x)))
-   '((f . (coalton-prelude:Num :a => :a -> :a))))
-
-  (signals tc:coalton-type-error
-    (run-coalton-typechecker
-     '((coalton:define _
-         (coalton::bind id (coalton:fn (x) x)
-                        (coalton::seq
-                         (id coalton:Unit)
-                         (id "hello"))))))))

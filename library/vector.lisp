@@ -7,8 +7,7 @@
   (:local-nicknames
    (#:types #:coalton-library/types)
    (#:list #:coalton-library/list)
-   (#:cell #:coalton-library/cell)
-   (#:addr #:coalton-library/addressable))
+   (#:cell #:coalton-library/cell))
   (:export
    #:Vector
    #:new
@@ -327,10 +326,7 @@
                     (Cons (index-unsafe index v) (inner v (+ 1 index)))))))
         (inner v 0))))
 
-  (define-instance (types:RuntimeRepr :a => Iso (Vector :a) (List :a)))
-
-  (define-instance (addr:Addressable (Vector :a))
-    (define addr:eq? addr::unsafe-internal-eq?)))
+  (define-instance (types:RuntimeRepr :a => Iso (Vector :a) (List :a))))
 
 (cl:defmacro make (cl:&rest elements)
   "Construct a `Vector' containing the ELEMENTS, in the order listed."

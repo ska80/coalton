@@ -3,9 +3,7 @@
 (defun run-coalton-tests ()
   (run-package-tests
    :packages '(:coalton-tests
-               #+broken
                :quil-coalton-tests
-               #+broken
                :thih-coalton-tests)
    :interactive t))
 
