@@ -142,6 +142,7 @@
 ;;;;           | attribute-repr? toplevel-define-type
 ;;;;           | toplevel-define-class
 ;;;;           | toplevel-define-instance
+;;;;           | toplevel-specialize
 ;;;;
 ;;;; toplevel-declare := "(" "declare" identifier qualified-ty ")"
 ;;;;
@@ -169,6 +170,7 @@
 ;;;;                           | "(" "define-instance" "(" ty-predicate "=>" ty-predicate ")" docstring? instance-method-definition ")"
 ;;;;                           | "(" "define-instance" "(" ( "(" ty-predicate ")" )+ "=>" ty-predicate ")" docstring? instance-method-definition+ ")"
 ;;;;
+;;;; toplevel-specialize := "(" identifier qualified-ty ty ")"
 
 ;;
 ;; Attributes

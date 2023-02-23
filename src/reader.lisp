@@ -171,7 +171,7 @@ Used to forbid reading while inside quasiquoted forms.")
                        (let ((*coalton-reader-allowed* t))
                          (funcall (get-macro-character #\, (named-readtables:ensure-readtable :standard)) s c)))))
 
-(defmacro coalton:coalton-toplevel (&rest forms)
+(defmacro coalton:coalton-toplevel (&body forms)
   (let ((*readtable* (named-readtables:ensure-readtable 'coalton:coalton))
         (*compile-file-truename*
           (pathname (format nil "COALTON-TOPLEVEL (~A)" *compile-file-truename*)))
