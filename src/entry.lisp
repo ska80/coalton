@@ -139,7 +139,7 @@
                          :file file
                          :message "Unable to codegen"
                          :primary-note (format nil
-                                               "expression has type ~A~{ ~S~}. ~S => ~S with unresolved constraint~A ~S"
+                                               "expression has type ~A~{ ~S~}.~{ (~S)~} => ~S with unresolved constraint~A ~S"
                                                (if settings:*coalton-print-unicode*
                                                    "∀"
                                                    "FORALL")
