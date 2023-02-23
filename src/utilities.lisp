@@ -12,6 +12,7 @@
    #:coalton-bug                        ; FUNCTION
    #:debug-log                          ; MACRO
    #:debug-tap                          ; MACRO
+   #:runtime-quote                      ; FUNCTION
    #:symbol-list                        ; TYPE
    #:cst-list                           ; TYPE
    #:cst-source-range                   ; FUNCTION
@@ -60,6 +61,9 @@
     `(let ((,var-name ,var))
        (format t ,(format nil "~A: ~~A~~%" var) ,var-name)
        ,var-name)))
+
+(defun runtime-quote (x)
+  `',x)
 
 (define-condition coalton-bug (error)
   ((reason :initarg :reason

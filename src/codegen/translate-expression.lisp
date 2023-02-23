@@ -271,7 +271,7 @@ Returns a `node'.")
        :vars (loop :for var :in (tc:node-lisp-vars expr)
                    :for var-name :in (tc:node-lisp-var-names expr)
                    :collect (cons var-name (tc:node-variable-name var))) 
-       :form (cst:raw (tc:node-lisp-body expr)))))
+       :form (tc:node-lisp-body expr))))
 
   (:method ((expr tc:node-match) ctx env)
     (declare (type pred-context ctx)

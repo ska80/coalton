@@ -33,7 +33,7 @@
 
          (tc:*env-update-log* nil))
 
-    (multiple-value-bind (type-definitions env)
+    (multiple-value-bind (type-definitions instances env)
         (tc:toplevel-define-type (parser:program-types program) file env)
 
       (multiple-value-bind (class-definitions env)
@@ -42,7 +42,7 @@
                                     env)
 
         (multiple-value-bind (ty-instances env)
-            (tc:toplevel-define-instance (parser:program-instances program) env file)
+            (tc:toplevel-define-instance (append instances (parser:program-instances program)) env file)
 
           (multiple-value-bind (toplevel-definitions env)
               (tc:toplevel-define (parser:program-defines program)
@@ -51,7 +51,10 @@
                                   env)
 
             (multiple-value-bind (toplevel-instances)
-                (tc:toplevel-typecheck-instance ty-instances (parser:program-instances program) env file)
+                (tc:toplevel-typecheck-instance ty-instances
+                                                (append instances (parser:program-instances program))
+                                                env
+                                                file)
 
               (let ((translation-unit
                       (tc:make-translation-unit
@@ -95,7 +98,11 @@
   (let ((env *global-environment*))
 
     (multiple-value-bind (ty preds node subs)
-        (tc:infer-expression-type node (tc:make-variable) nil (tc:make-tc-env :env env) file)
+        (tc:infer-expression-type (parser:rename-variables node)
+                                  (tc:make-variable)
+                                  nil
+                                  (tc:make-tc-env :env env)
+                                  file)
 
       (multiple-value-bind (preds subs)
           (tc:solve-fundeps env preds subs)

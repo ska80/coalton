@@ -333,7 +333,7 @@
   (type      (util:required 'type)      :type ty                 :read-only t)
   (vars      (util:required 'vars)      :type node-variable-list :read-only t)
   (var-names (util:required 'var-names) :type util:symbol-list   :read-only t)
-  (body      (util:required 'body)      :type cst:cst            :read-only t))
+  (body      (util:required 'body)      :type t                  :read-only t))
 
 (defstruct (node-match-branch
             (:copier nil))
@@ -640,7 +640,7 @@
         :type (parse-type (cst:second form) file)
         :vars vars
         :var-names (mapcar #'node-variable-name vars)
-        :body (cst:nthrest 3 form)
+        :body (cst:raw (cst:nthrest 3 form))
         :source (cst:source form))))
 
     ((and (cst:atom (cst:first form))

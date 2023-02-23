@@ -163,7 +163,7 @@
 (defun make-update-record (name arg-list)
   `(setf env (,name env ,@(loop :for arg :in (cdr arg-list)
                                 :if (symbolp arg)
-                                  :collect (car `(',arg)) ; lol
+                                  :collect (util:runtime-quote arg)
                                 :else
                                   :collect arg))))
 

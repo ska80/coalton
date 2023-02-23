@@ -225,7 +225,7 @@
             (:copier nil))
   (vars      (util:required 'vars)      :type node-variable-list :read-only t)
   (var-names (util:required 'var-names) :type util:symbol-list   :read-only t)
-  (body      (util:required 'body)      :type cst:cst            :read-only t))
+  (body      (util:required 'body)      :type t                  :read-only t))
 
 (defstruct (node-match-branch
             (:copier nil))

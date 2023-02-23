@@ -1437,6 +1437,23 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
 
     (let ((ctor (tc:lookup-constructor (tc-env-env env) (parser:pattern-constructor-name pat) :no-error t)))
 
+      (check-duplicates
+       (parser:pattern-variables pat)
+       #'parser:pattern-var-name
+       (lambda (first second)
+         (error 'tc-error
+                :err (coalton-error
+                      :span (parser:pattern-source first) 
+                      :file file
+                      :message "Duplicate pattern variable"
+                      :primary-note "first definition here"
+                      :notes
+                      (list
+                       (make-coalton-error-note
+                        :type :primary
+                        :span (parser:pattern-source second) 
+                        :message "second defintion here"))))))
+
       (unless ctor
         (error 'tc-error
                :err (coalton-error
@@ -1862,7 +1879,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
 
                      (output-qual-tys
                        (loop :for ty :in expr-tys
-                             :collect (tc:make-qualified-ty :predicates nil :type ty)))
+                             :collect (tc:apply-substitution subs (tc:make-qualified-ty :predicates nil :type ty))))
 
                      (output-schemes
                        (loop :for ty :in output-qual-tys
@@ -1874,6 +1891,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
                       :for binding :in bindings
 
                       :for name := (parser:node-variable-name (parser:name binding))
+
                       :do (tc-env-replace-type env name scheme))
 
                 (when (and (parser:toplevel (first bindings)) deferred-preds)
@@ -1909,6 +1927,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
                       :for binding :in bindings
 
                       :for name := (parser:node-variable-name (parser:name binding))
+
                       :do (tc-env-replace-type env name scheme))
 
                 (when (and (parser:toplevel (first bindings)) deferred-preds)

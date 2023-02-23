@@ -61,7 +61,7 @@
     (declare (type algo:immutable-map ctx)
              (values node-bind algo:immutable-map))
 
-    (let* ((new-bindings (make-local-vars (pattern-variables (node-bind-pattern node))))
+    (let* ((new-bindings (make-local-vars (mapcar #'pattern-var-name (pattern-variables (node-bind-pattern node)))))
 
            (new-ctx (algo:immutable-map-set-multiple ctx new-bindings)))
 
@@ -161,7 +161,8 @@
   (:method ((node node-match-branch) ctx)
     (declare (type algo:immutable-map ctx))
 
-    (let* ((new-bindings (make-local-vars (pattern-variables (node-match-branch-pattern node))))
+    (let* ((new-bindings (make-local-vars (mapcar #'pattern-var-name
+                                                  (pattern-variables (node-match-branch-pattern node)))))
 
            (new-ctx (algo:immutable-map-set-multiple ctx new-bindings)))
 
@@ -306,7 +307,7 @@
     (declare (type algo:immutable-map ctx)
              (values node-do-bind algo:immutable-map))
 
-    (let* ((new-bindings (make-local-vars (pattern-variables (node-do-bind-pattern node))))
+    (let* ((new-bindings (make-local-vars (mapcar #'pattern-var-name (pattern-variables (node-do-bind-pattern node)))))
 
            (new-ctx (algo:immutable-map-set-multiple ctx new-bindings)))
 

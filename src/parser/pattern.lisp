@@ -59,6 +59,13 @@
             (:copier nil))
   (name (util:required 'name) :type identifier :read-only t))
 
+(defun pattern-var-list-p (x)
+  (and (alexandria:proper-list-p x)
+       (every #'pattern-var-p x)))
+
+(deftype pattern-var-list ()
+  '(satisfies pattern-var-list-p))
+
 (defstruct (pattern-literal
             (:include pattern)
             (:copier nil))
@@ -131,19 +138,23 @@
 
 (defun pattern-variables (pattern)
   (declare (type pattern pattern)
-           (values util:symbol-list))
+           (values pattern-var-list))
 
   (remove-duplicates (pattern-variables-generic% pattern) :test #'eq))
 
 (defgeneric pattern-variables-generic% (pattern)
   (:method ((pattern pattern-var))
-    (list (pattern-var-name pattern)))
+    (declare (values pattern-var-list))
+    (list pattern))
 
   (:method ((pattern pattern-literal))
+    (declare (values pattern-var-list))
     nil)
 
   (:method ((pattern pattern-wildcard))
+    (declare (values pattern-var-list))
     nil)
 
   (:method ((pattern pattern-constructor))
+    (declare (values pattern-var-list))
     (mapcan #'pattern-variables-generic% (pattern-constructor-patterns pattern))))

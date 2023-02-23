@@ -50,7 +50,8 @@
   (constructors      (util:required 'constructors)      :type tc:constructor-entry-list :read-only t)
   (constructor-types (util:required 'constructor-types) :type tc:scheme-list            :read-only t)
 
-  (docstring         (util:required 'docstring)         :type (or null string)       :read-only t))
+  (docstring         (util:required 'docstring)         :type (or null string)          :read-only t)
+  (source            (util:required 'source)            :type cons                      :read-only t))
 
 (defun type-definition-list-p (x)
   (and (alexandria:proper-list-p x)
@@ -63,7 +64,7 @@
   (declare (type parser:toplevel-define-type-list types)
            (type coalton-file file)
            (type tc:environment env)
-           (values type-definition-list tc:environment))
+           (values type-definition-list parser:toplevel-define-instance-list tc:environment))
 
   ;; Ensure that all types are defined in the current package
   (check-package
@@ -155,7 +156,9 @@
          (types-by-scc
            (loop :for scc :in (reverse sccs)
                  :collect (loop :for name :in scc
-                                :collect (gethash name type-table)))))
+                                :collect (gethash name type-table))))
+
+         (instances nil))
 
     (values
      (loop :for scc :in types-by-scc
@@ -178,10 +181,13 @@
                      :for ty := (tc:make-tycon :name name :kind kind)
                      :do (partial-type-env-add-type partial-env name ty))
 
-           :append (loop :with type-definitions := (infer-define-type-scc-kinds scc partial-env file)
-                         :for type :in type-definitions
-                         :do (setf env (update-env-for-type-definition type env))
-                         :finally (return type-definitions)))
+           :append  (multiple-value-bind (type-definitions instances_)
+                        (infer-define-type-scc-kinds scc partial-env file)
+                      (setf instances (append instances instances_))
+                      (loop :for type :in type-definitions
+                            :do (setf env (update-env-for-type-definition type env))
+                            :finally (return type-definitions))))
+     instances
      env)))
 
 (defun update-env-for-type-definition (type env)
@@ -249,7 +255,7 @@
   (declare (type parser:toplevel-define-type-list types)
            (type partial-type-env env)
            (type coalton-file file)
-           (values type-definition-list))
+           (values type-definition-list parser:toplevel-define-instance-list))
 
   (let ((ksubs nil)
 
@@ -276,105 +282,185 @@
           :do (partial-type-env-replace-type env name (tc:make-tycon :name name :kind (tc:apply-ksubstitution ksubs kind))))
 
     ;; Build type-definitions for each type in the scc
-    (loop :for type :in types
-          :for name := (parser:identifier-src-name (parser:toplevel-define-type-name type))
-          :for tvars := (tc:apply-ksubstitution
-                         ksubs
-                         (mapcar (lambda (var)
-                                   (partial-type-env-lookup-var
-                                    env
-                                    (parser:keyword-src-name var)
-                                    (parser:keyword-src-source var)
-                                    file))
-                                 (parser:toplevel-define-type-vars type)))
+    (let ((instances nil))
+      (values
+       (loop :for type :in types
+             :for name := (parser:identifier-src-name (parser:toplevel-define-type-name type))
+             :for tvars := (tc:apply-ksubstitution
+                            ksubs
+                            (mapcar (lambda (var)
+                                      (partial-type-env-lookup-var
+                                       env
+                                       (parser:keyword-src-name var)
+                                       (parser:keyword-src-source var)
+                                       file))
+                                    (parser:toplevel-define-type-vars type)))
 
-          :for repr := (parser:toplevel-define-type-repr type)
-          :for repr-type := (and repr (parser:keyword-src-name (parser:attribute-repr-type repr)))
-          :for repr-arg := (and repr (eq repr-type :native) (cst:raw (parser:attribute-repr-arg repr))) 
+             :for repr := (parser:toplevel-define-type-repr type)
+             :for repr-type := (and repr (parser:keyword-src-name (parser:attribute-repr-type repr)))
+             :for repr-arg := (and repr (eq repr-type :native) (cst:raw (parser:attribute-repr-arg repr))) 
 
-          ;; Apply ksubs to find the type of each constructor
-          :for constructor-types
-            := (loop :for ctor :in (parser:toplevel-define-type-ctors type)
-                     :for ctor-name := (parser:identifier-src-name (parser:constructor-name ctor))
-                     :for ty
-                       := (tc:make-function-type*
-                           (tc:apply-ksubstitution ksubs (gethash ctor-name ctor-table))
-                           (tc:apply-type-argument-list
-                            (tc:apply-ksubstitution ksubs (gethash name (partial-type-env-ty-table env)))
-                            tvars))
-                     :collect (tc:quantify-using-tvar-order tvars (tc:qualify nil ty)))
+             ;; Apply ksubs to find the type of each constructor
+             :for constructor-types
+               := (loop :for ctor :in (parser:toplevel-define-type-ctors type)
+                        :for ctor-name := (parser:identifier-src-name (parser:constructor-name ctor))
+                        :for ty
+                          := (tc:make-function-type*
+                              (tc:apply-ksubstitution ksubs (gethash ctor-name ctor-table))
+                              (tc:apply-type-argument-list
+                               (tc:apply-ksubstitution ksubs (gethash name (partial-type-env-ty-table env)))
+                               tvars))
+                        :collect (tc:quantify-using-tvar-order tvars (tc:qualify nil ty)))
 
-          ;; Check that repr :enum types do not have any constructors with fields
-          :when (eq repr-type :enum)
-            :do (loop :for ctor :in (parser:toplevel-define-type-ctors type)
-                      :unless (endp (parser:constructor-fields ctor))
-                        :do (error 'tc-error
-                                   :err (coalton-error
-                                         :span (parser:ty-source (first (parser:constructor-fields ctor)))
-                                         :file file
-                                         :message "Invalid repr :enum attribute"
-                                         :primary-note "constructors of repr :enum types cannot have fields")))
+             ;; Check that repr :enum types do not have any constructors with fields
+             :when (eq repr-type :enum)
+               :do (loop :for ctor :in (parser:toplevel-define-type-ctors type)
+                         :unless (endp (parser:constructor-fields ctor))
+                           :do (error 'tc-error
+                                      :err (coalton-error
+                                            :span (parser:ty-source (first (parser:constructor-fields ctor)))
+                                            :file file
+                                            :message "Invalid repr :enum attribute"
+                                            :primary-note "constructors of repr :enum types cannot have fields")))
 
-                ;; Check that repr :transparent types have a single constructor
-          :when (eq repr-type :transparent)
-            :do (unless (= 1 (length (parser:toplevel-define-type-ctors type)))
-                  (error 'tc-error
-                         :err (coalton-error
-                               :span (parser:toplevel-define-type-source type)
-                               :file file
-                               :message "Invalid repr :transparent attribute"
-                               :primary-note "repr :transparent types must have a single constructor")))
+                   ;; Check that repr :transparent types have a single constructor
+             :when (eq repr-type :transparent)
+               :do (unless (= 1 (length (parser:toplevel-define-type-ctors type)))
+                     (error 'tc-error
+                            :err (coalton-error
+                                  :span (parser:toplevel-define-type-source type)
+                                  :file file
+                                  :message "Invalid repr :transparent attribute"
+                                  :primary-note "repr :transparent types must have a single constructor")))
 
-                
-                ;; Check that the single constructor of a repr :transparent type has a single field
-          :when (eq repr-type :transparent)
-            :do (unless (= 1 (length (parser:constructor-fields (first (parser:toplevel-define-type-ctors type)))))
-                  (error 'tc-error
-                         :err (coalton-error
-                               :span (parser:constructor-source (first (parser:toplevel-define-type-ctors type)))
-                               :file file
-                               :message "Invalid repr :transparent attribute"
-                               :primary-note "constructors of repr :transparent types must have a single field")))
+                   
+                   ;; Check that the single constructor of a repr :transparent type has a single field
+             :when (eq repr-type :transparent)
+               :do (unless (= 1 (length (parser:constructor-fields (first (parser:toplevel-define-type-ctors type)))))
+                     (error 'tc-error
+                            :err (coalton-error
+                                  :span (parser:constructor-source (first (parser:toplevel-define-type-ctors type)))
+                                  :file file
+                                  :message "Invalid repr :transparent attribute"
+                                  :primary-note "constructors of repr :transparent types must have a single field")))
 
-          :collect (let ((ctors
-                           (loop :for ctor :in (parser:toplevel-define-type-ctors type)
-                                 :for ctor-name := (parser:identifier-src-name (parser:constructor-name ctor))
-                                 :for classname := (alexandria:format-symbol
-                                                    *package*
-                                                    "~A/~A"
-                                                    name
-                                                    ctor-name)
-                                 :collect (tc:make-constructor-entry
-                                           :name ctor-name
-                                           :arity (length (parser:constructor-fields ctor))
-                                           :constructs name
-                                           :classname classname
-                                           :compressed-repr (if (eq repr-type :enum)
-                                                                classname
-                                                                nil)))))
-                     (make-type-definition
-                      :name name
-                      :type (gethash name (partial-type-env-ty-table env))
-                      :runtime-type (cond
-                                      ((eq repr-type :transparent)
-                                       (tc:lisp-type
-                                        (tc:function-type-from
-                                         (tc:qualified-ty-type
-                                          (tc:fresh-inst (first constructor-types))))
-                                        (partial-type-env-env env)))
-                                      ((eq repr-type :native)
-                                       repr-arg)
-                                      ((eq repr-type :enum)
-                                       `(member ,@(mapcar #'tc:constructor-entry-compressed-repr ctors)))
-                                      (t
-                                       name))
-                      :explicit-repr (if (eq repr-type :native)
-                                         (list repr-type repr-arg)
-                                         repr-type)
-                      :enum-repr (eq repr-type :enum)
-                      :newtype (eq repr-type :transparent)
+             :collect (let* ((ctors
+                               (loop :for ctor :in (parser:toplevel-define-type-ctors type)
+                                     :for ctor-name := (parser:identifier-src-name (parser:constructor-name ctor))
+                                     :for classname := (alexandria:format-symbol
+                                                        *package*
+                                                        "~A/~A"
+                                                        name
+                                                        ctor-name)
+                                     :collect (tc:make-constructor-entry
+                                               :name ctor-name
+                                               :arity (length (parser:constructor-fields ctor))
+                                               :constructs name
+                                               :classname classname
+                                               :compressed-repr (if (eq repr-type :enum)
+                                                                    classname
+                                                                    nil))))
 
-                      :constructors ctors
+                             (type-definition
+                               (make-type-definition
+                                :name name
+                                :type (gethash name (partial-type-env-ty-table env))
+                                :runtime-type (cond
+                                                ((eq repr-type :transparent)
+                                                 (tc:lisp-type
+                                                  (tc:function-type-from
+                                                   (tc:qualified-ty-type
+                                                    (tc:fresh-inst (first constructor-types))))
+                                                  (partial-type-env-env env)))
+                                                ((eq repr-type :native)
+                                                 repr-arg)
+                                                ((eq repr-type :enum)
+                                                 `(member ,@(mapcar #'tc:constructor-entry-compressed-repr ctors)))
+                                                (t
+                                                 name))
+                                :explicit-repr (if (eq repr-type :native)
+                                                   (list repr-type repr-arg)
+                                                   repr-type)
+                                :enum-repr (eq repr-type :enum)
+                                :newtype (eq repr-type :transparent)
 
-                      :constructor-types constructor-types
-                      :docstring (parser:toplevel-define-type-docstring type))))))
+                                :constructors ctors
+
+                                :constructor-types constructor-types
+                                :docstring (parser:toplevel-define-type-docstring type)
+                                :source (parser:toplevel-define-type-source type)))
+
+                             (runtime-repr-instance (maybe-runtime-repr-instance type-definition)))
+
+                        (when runtime-repr-instance
+                          (push runtime-repr-instance instances))
+
+                        type-definition))
+       instances))))
+
+(defun maybe-runtime-repr-instance (type)
+  (declare (type type-definition type))
+  (unless (equalp *package* (find-package "COALTON-LIBRARY/TYPES"))
+    (make-runtime-repr-instance type)))
+
+;; TODO: replace find-symbol with ensure-symbol everywhere
+
+(defun make-runtime-repr-instance (type)
+  (declare (type type-definition type))
+
+  (let* ((source (type-definition-source type))
+
+         (types-package (find-package "COALTON-LIBRARY/TYPES"))
+
+         (runtime-repr (alexandria:ensure-symbol "RUNTIMEREPR" types-package))
+
+         (runtime-repr-method (alexandria:ensure-symbol "RUNTIME-REPR" types-package))
+
+         (lisp-type (alexandria:ensure-symbol "LISPTYPE" types-package))
+
+         (tvars (loop :for i :below (tc:kind-arity (tc:tycon-kind (type-definition-type type)))
+                      :collect (parser:make-tyvar
+                                :source source
+                                :name (alexandria:format-symbol :keyword "~d" i))))
+
+         (ty (parser:make-tycon
+              :source source
+              :name (type-definition-name type))))
+
+    (loop :for tvar :in tvars
+          :do (setf ty (parser:make-tapp
+                        :source source
+                        :from ty
+                        :to tvar)))
+
+    (parser:make-toplevel-define-instance
+     :context nil
+     :pred (parser:make-ty-predicate
+            :class (parser:make-identifier-src
+                    :name runtime-repr
+                    :source source)
+            :types (list ty)
+            :source source)
+     :docstring nil
+     :methods (list
+               (parser:make-instance-method-definition
+                :name (parser:make-node-variable
+                       :source source
+                       :name runtime-repr-method)
+                :vars (list
+                       (parser:make-node-variable
+                        :source source
+                        :name (gentemp)))
+                :body (parser:make-node-body
+                       :nodes nil
+                       :last-node (parser:make-node-lisp
+                                   :source source
+                                   :type (parser:make-tycon
+                                          :source source
+                                          :name lisp-type)
+                                   :vars nil
+                                   :var-names nil
+                                   :body (list (util:runtime-quote (type-definition-runtime-type type)))))
+                :source source))
+     :source source
+     :head-src source)))

@@ -305,20 +305,11 @@
                (:file "quantize-tests")
                (:file "hashtable-tests")
                (:file "iterator-tests")
-               #+broken
-               (:file "addressable-tests")
-               #+broken
                (:file "call-coalton-from-lisp")
-               #+broken
                (:file "vector-tests")
-               #+broken
                (:file "string-tests")
-               #+broken
                (:file "recursive-let-tests")
-               #+broken
                (:file "class-tests")
-               #+broken
                (:file "list-tests")
-               #+broken
                (:file "red-black-tests")
                ))

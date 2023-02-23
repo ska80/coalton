@@ -94,7 +94,8 @@
                     (lambda (var)
                       (list (car var) (cdr var)))
                     (node-lisp-vars expr))
-               ,@(node-lisp-form expr))))
+               ,@(butlast (node-lisp-form expr))
+               (values ,(car (last (node-lisp-form expr)))))))
 
       (if settings:*emit-type-annotations*
           `(the (values ,(tc:lisp-type (node-type expr) env) &optional)

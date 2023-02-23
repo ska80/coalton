@@ -31,7 +31,6 @@
            (multiple-value-bind (program env)
                (entry:entry-point program)
              (declare (ignore program))
-             (setf entry:*global-environment* env)
              
              (when expected-types
                (loop :for (unparsed-symbol . unparsed-type) :in expected-types
