@@ -1,7 +1,6 @@
 (defpackage #:coalton-impl/codegen/optimizer
   (:use
    #:cl
-   #:coalton-impl/util
    #:coalton-impl/codegen/pattern
    #:coalton-impl/codegen/ast)
   (:import-from
@@ -365,7 +364,7 @@
 
   (let ((rator (node-rator-name node)))
     (unless rator
-      (coalton-bug "Expected rator to be a symbol."))
+      (util:coalton-bug "Expected rator to be a symbol."))
 
     (let* (;; Lookup the instance
            (instance (tc:lookup-instance-by-codegen-sym env rator))
@@ -385,7 +384,7 @@
 
       (unless (= (length constraints)
                  (length args))
-        (coalton-bug "Expected the number of arguments (~D) to match the number of constraints (~D)."
+        (util:coalton-bug "Expected the number of arguments (~D) to match the number of constraints (~D)."
                      (length args)
                      (length constraints)))
 
@@ -471,7 +470,7 @@
                      (return-from apply-specialization))
 
                    (unless (>= (length (node-rands node)) num-preds)
-                     (coalton-bug "Expected function ~A to have at least ~A args when applying specialization." rator-name (length preds)))
+                     (util:coalton-bug "Expected function ~A to have at least ~A args when applying specialization." rator-name (length preds)))
 
                    (cond
                      ((= num-preds (length (node-rands node)))
@@ -488,7 +487,7 @@
                        :rands (subseq (node-rands node) num-preds)))
 
                      (t
-                      (coalton-bug "Invalid specialization ~A~%" specialization))))))))
+                      (util:coalton-bug "Invalid specialization ~A~%" specialization))))))))
     (traverse
      node 
      (list

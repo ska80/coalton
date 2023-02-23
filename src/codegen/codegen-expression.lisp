@@ -1,7 +1,6 @@
 (defpackage #:coalton-impl/codegen/codegen-expression
   (:use
    #:cl
-   #:coalton-impl/util
    #:coalton-impl/codegen/pattern
    #:coalton-impl/codegen/ast)
   (:import-from
@@ -12,10 +11,12 @@
    #:constructor-slot-name)
   (:local-nicknames
    (#:settings #:coalton-impl/settings)
+   (#:util #:coalton-impl/util)
    (#:rt #:coalton-impl/runtime)
    (#:tc #:coalton-impl/typechecker))
   (:export
-   #:codegen-expression))
+   #:codegen-expression ; FUNCTION
+   ))
 
 (in-package #:coalton-impl/codegen/codegen-expression)
 
@@ -232,7 +233,7 @@
   (declare (type node-let node)
            (type list sccs)
            (type (or null symbol) current-function)
-           (type symbol-list local-vars)
+           (type util:symbol-list local-vars)
            (type tc:environment env))
 
   (when (null sccs)

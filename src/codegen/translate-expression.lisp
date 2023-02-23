@@ -6,7 +6,6 @@
 (defpackage #:coalton-impl/codegen/translate-expression
   (:use
    #:cl
-   #:coalton-impl/util
    #:coalton-impl/codegen/pattern
    #:coalton-impl/codegen/ast
    #:coalton-impl/codegen/resolve-instance)
@@ -121,11 +120,11 @@ Returns a `node'.")
       
       (let* ((classes-package (find-package "COALTON-LIBRARY/CLASSES"))
 
-             (num-class (find-symbol "NUM" classes-package))
+             (num-class (util:find-symbol "NUM" classes-package))
 
              (num-pred (tc:make-ty-predicate :class num-class :types (list (tc:qualified-ty-type qual-ty))))
 
-             (from-int-method (find-symbol "FROMINT" classes-package)))
+             (from-int-method (util:find-symbol "FROMINT" classes-package)))
         
         (make-node-application
          :type (tc:qualified-ty-type qual-ty)
@@ -313,7 +312,7 @@ Returns a `node'.")
 
       (let* ((coalton-package (find-package "COALTON"))
 
-             (unit-value (find-symbol "UNIT" coalton-package)))
+             (unit-value (util:find-symbol "UNIT" coalton-package)))
         
         (make-node-return
          :type (tc:qualified-ty-type qual-ty)
@@ -329,8 +328,8 @@ Returns a `node'.")
              (values node))
 
     (let* ((coalton-package (find-package "COALTON"))
-           (true-value (find-symbol "TRUE" coalton-package))
-           (false-value (find-symbol "FALSE" coalton-package)))
+           (true-value (util:find-symbol "TRUE" coalton-package))
+           (false-value (util:find-symbol "FALSE" coalton-package)))
 
       (loop :with out-node := (make-node-variable
                                :type tc:*boolean-type*
@@ -363,8 +362,8 @@ Returns a `node'.")
              (values node))
 
     (let* ((coalton-package (find-package "COALTON"))
-           (true-value (find-symbol "TRUE" coalton-package))
-           (false-value (find-symbol "FALSE" coalton-package)))
+           (true-value (util:find-symbol "TRUE" coalton-package))
+           (false-value (util:find-symbol "FALSE" coalton-package)))
 
       (loop :with out-node := (make-node-variable
                                :type tc:*boolean-type*
@@ -397,8 +396,8 @@ Returns a `node'.")
              (values node))
 
     (let* ((coalton-package (find-package "COALTON"))
-           (true-value (find-symbol "TRUE" coalton-package))
-           (false-value (find-symbol "FALSE" coalton-package))
+           (true-value (util:find-symbol "TRUE" coalton-package))
+           (false-value (util:find-symbol "FALSE" coalton-package))
 
            (qual-ty (tc:node-type expr)))
 
@@ -427,9 +426,9 @@ Returns a `node'.")
              (values node))
 
     (let* ((coalton-package (find-package "COALTON"))
-           (true-value (find-symbol "TRUE" coalton-package))
-           (false-value (find-symbol "FALSE" coalton-package))
-           (unit-value (find-symbol "UNIT" coalton-package)))
+           (true-value (util:find-symbol "TRUE" coalton-package))
+           (false-value (util:find-symbol "FALSE" coalton-package))
+           (unit-value (util:find-symbol "UNIT" coalton-package)))
 
       (make-node-match
        :type tc:*unit-type*
@@ -456,9 +455,9 @@ Returns a `node'.")
              (values node))
 
     (let* ((coalton-package (find-package "COALTON"))
-           (true-value (find-symbol "TRUE" coalton-package))
-           (false-value (find-symbol "FALSE" coalton-package))
-           (unit-value (find-symbol "UNIT" coalton-package)))
+           (true-value (util:find-symbol "TRUE" coalton-package))
+           (false-value (util:find-symbol "FALSE" coalton-package))
+           (unit-value (util:find-symbol "UNIT" coalton-package)))
 
       (make-node-match
        :type tc:*unit-type*
@@ -485,8 +484,8 @@ Returns a `node'.")
              (values node))
 
     (let* ((coalton-package (find-package "COALTON"))
-           (true-value (find-symbol "TRUE" coalton-package))
-           (false-value (find-symbol "FALSE" coalton-package))
+           (true-value (util:find-symbol "TRUE" coalton-package))
+           (false-value (util:find-symbol "FALSE" coalton-package))
 
            (qual-ty (tc:node-type expr)))
 
@@ -523,9 +522,9 @@ Returns a `node'.")
 
     (let* ((classes-package (find-package "COALTON-LIBRARY/CLASSES"))
 
-           (monad-symbol (find-symbol "MONAD" classes-package))
+           (monad-symbol (util:find-symbol "MONAD" classes-package))
 
-           (bind-symbol (find-symbol ">>=" classes-package))
+           (bind-symbol (util:find-symbol ">>=" classes-package))
 
            (m-type (tc:tapp-from (tc:qualified-ty-type (tc:node-type node))))
 

@@ -1,7 +1,6 @@
 (defpackage #:coalton-impl/codegen/translate-instance
   (:use
    #:cl
-   #:coalton-impl/util
    #:coalton-impl/codegen/ast
    #:coalton-impl/codegen/resolve-instance)
   (:import-from

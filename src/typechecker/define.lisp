@@ -260,7 +260,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
 
     (let* ((classes-package (find-package "COALTON-LIBRARY/CLASSES"))
 
-           (num (find-symbol "NUM" classes-package))
+           (num (util:find-symbol "NUM" classes-package))
 
            (tvar (tc:make-variable))
 
@@ -1257,7 +1257,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
 
            (classes-package (find-package "COALTON-LIBRARY/CLASSES"))
 
-           (monad-symbol (find-symbol "MONAD" classes-package))
+           (monad-symbol (util:find-symbol "MONAD" classes-package))
 
            (preds nil)
 

@@ -1,23 +1,24 @@
 (defpackage #:coalton-impl/codegen/struct-or-class
   (:use
-   #:cl
-   #:coalton-impl/util)
+   #:cl)
   (:local-nicknames
    (#:settings #:coalton-impl/settings)
+   (#:util #:coalton-impl/util)
    (#:global-lexical #:coalton-impl/global-lexical)
    (#:rt #:coalton-impl/runtime))
   (:export
-   #:struct-or-class
-   #:struct-or-class-field
-   #:make-struct-or-class-field
-   #:struct-or-class-field-name
-   #:struct-or-class-field-type))
+   #:struct-or-class                    ; FUNCTION
+   #:struct-or-class-field              ; STRUCT
+   #:make-struct-or-class-field         ; CONSTRUCTOR
+   #:struct-or-class-field-name         ; ACCESSOR
+   #:struct-or-class-field-type         ; ACCESSOR
+   ))
 
 (in-package #:coalton-impl/codegen/struct-or-class)
 
 (defstruct struct-or-class-field
-  (name (required 'name) :type symbol :read-only t)
-  (type (required 'type) :type t      :read-only t))
+  (name (util:required 'name) :type symbol :read-only t)
+  (type (util:required 'type) :type t      :read-only t))
 
 (defun struct-or-class (&key
                               (classname (error "Class Name required"))

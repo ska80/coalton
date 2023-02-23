@@ -1,8 +1,9 @@
 (defpackage #:coalton-impl/codegen/ast-substitutions
   (:use
    #:cl
-   #:coalton-impl/util
    #:coalton-impl/codegen/ast)
+  (:local-nicknames
+   (#:util #:coalton-impl/util))
   (:export
    #:ast-substitution                   ; STRUCT
    #:make-ast-substitution              ; CONSTRUCTOR
@@ -14,8 +15,8 @@
 (in-package #:coalton-impl/codegen/ast-substitutions)
 
 (defstruct ast-substitution
-  (from (required 'from) :type symbol :read-only t)
-  (to   (required 'to)   :type node   :read-only t))
+  (from (util:required 'from) :type symbol :read-only t)
+  (to   (util:required 'to)   :type node   :read-only t))
 
 (defun ast-substitution-list-p (x)
   (and (alexandria:proper-list-p x)
@@ -62,7 +63,7 @@
              (values node))
 
     (when (find (node-direct-application-rator node) subs :key #'ast-substitution-from)
-      (coalton-bug
+      (util:coalton-bug
        "Failure to apply ast substitution on variable ~A to node-direct-application"
        (node-direct-application-rator node)))
 
@@ -89,7 +90,7 @@
      :type (node-type node)
      :bindings (loop :for (name . node) :in (node-let-bindings node)
                      :do (when (find name subs :key #'ast-substitution-from)
-                           (coalton-bug
+                           (util:coalton-bug
                             "Failure to apply ast substitution on variable ~A to node-let"
                             name))
                      :collect (cons name (apply-ast-substitution subs node)))

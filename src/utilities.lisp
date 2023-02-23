@@ -3,6 +3,7 @@
 (defpackage #:coalton-impl/util
   (:documentation "Utility functions and methods used throughout COALTON.")
   (:use #:cl)
+  (:shadow #:find-symbol)
   (:local-nicknames
    (#:cst #:concrete-syntax-tree))
   (:export
@@ -18,6 +19,7 @@
    #:cst-source-range                   ; FUNCTION
    #:literal-value                      ; TYPE
    #:maphash-values-new                 ; FUNCTION
+   #:find-symbol                        ; FUNCTION
    #:find-symbol?                       ; FUNCTION
    #:sexp-fmt                           ; FUNCTION
    #:take-until                         ; FUNCTION
@@ -64,6 +66,16 @@
 
 (defun runtime-quote (x)
   `',x)
+
+(defun find-symbol (name package)
+  (declare (type string name)
+           (type package package)
+           (values symbol))
+
+  (let ((sym (cl:find-symbol name package)))
+    (unless sym
+      (coalton-bug "Unable to find symbol with name ~A in package ~A" name package))
+    sym))
 
 (define-condition coalton-bug (error)
   ((reason :initarg :reason

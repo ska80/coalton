@@ -403,8 +403,6 @@
   (unless (equalp *package* (find-package "COALTON-LIBRARY/TYPES"))
     (make-runtime-repr-instance type)))
 
-;; TODO: replace find-symbol with ensure-symbol everywhere
-
 (defun make-runtime-repr-instance (type)
   (declare (type type-definition type))
 
@@ -412,11 +410,11 @@
 
          (types-package (find-package "COALTON-LIBRARY/TYPES"))
 
-         (runtime-repr (alexandria:ensure-symbol "RUNTIMEREPR" types-package))
+         (runtime-repr (util:find-symbol "RUNTIMEREPR" types-package))
 
-         (runtime-repr-method (alexandria:ensure-symbol "RUNTIME-REPR" types-package))
+         (runtime-repr-method (util:find-symbol "RUNTIME-REPR" types-package))
 
-         (lisp-type (alexandria:ensure-symbol "LISPTYPE" types-package))
+         (lisp-type (util:find-symbol "LISPTYPE" types-package))
 
          (tvars (loop :for i :below (tc:kind-arity (tc:tycon-kind (type-definition-type type)))
                       :collect (parser:make-tyvar

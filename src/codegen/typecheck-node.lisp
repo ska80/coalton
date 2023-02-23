@@ -1,7 +1,6 @@
 (defpackage #:coalton-impl/codegen/typecheck-node
   (:use
    #:cl
-   #:coalton-impl/util
    #:coalton-impl/codegen/ast)
   (:local-nicknames
    (#:util #:coalton-impl/util)

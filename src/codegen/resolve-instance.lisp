@@ -1,9 +1,9 @@
-(cl:defpackage #:coalton-impl/codegen/resolve-instance
+(defpackage #:coalton-impl/codegen/resolve-instance
   (:use
    #:cl
-   #:coalton-impl/util
    #:coalton-impl/codegen/ast)
   (:local-nicknames
+   (#:util #:coalton-impl/util)
    (#:tc #:coalton-impl/typechecker))
   (:export
    #:pred-context                       ; TYPE
@@ -12,7 +12,7 @@
    #:resolve-static-dict                ; FUNCTION
    ))
 
-(cl:in-package #:coalton-impl/codegen/resolve-instance)
+(in-package #:coalton-impl/codegen/resolve-instance)
 
 (defun pred-context-p (x)
   (and (alexandria:proper-list-p x)

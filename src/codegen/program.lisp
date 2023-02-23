@@ -1,7 +1,6 @@
 (defpackage #:coalton-impl/codegen/program
   (:use
    #:cl
-   #:coalton-impl/util
    #:coalton-impl/codegen/ast)
   (:import-from
    #:coalton-impl/codegen/translate-expression
