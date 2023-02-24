@@ -14,7 +14,8 @@
    #:make-coalton-error-help)
   (:local-nicknames
    (#:util #:coalton-impl/util)
-   (#:error #:coalton-impl/error))
+   (#:error #:coalton-impl/error)
+   (#:tc #:coalton-impl/typechecker/stage-1))
   (:export
    #:tc-error                           ; CONDITION
    #:tc-error-err                       ; ACCESSOR
@@ -27,9 +28,11 @@
 (define-condition tc-error (error)
   ((err :reader tc-error-err
         :initarg :err
-        :type error:coalton-error))
+        :type function))
   (:report (lambda (c s)
-             (error:display-coalton-error s (tc-error-err c)))))
+             (let ((*print-circle* nil))
+               (tc:with-pprint-variable-context ()
+                 (error:display-coalton-error s (funcall (tc-error-err c))))))))
 
 (defun check-duplicates (elems f callback)
   (declare (type list elems)

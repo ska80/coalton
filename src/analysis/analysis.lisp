@@ -26,48 +26,38 @@
                         (unless (eq t exhaustive-or-missing)
                           (warn
                            'non-exhaustive-match-warning
-                           :err (error:make-coalton-error
+                           :err (error:coalton-error
                                  :type :warn
                                  :file file
-                                 :location (car (tc:node-source node))
+                                 :span (tc:node-source node)
                                  :message "Non-exhaustive match"
-                                 :notes (append
-                                         (list
-                                          (error:make-coalton-error-note
-                                           :type :primary
-                                           :span (tc:node-source node)
-                                           :message "Non-exhaustive match"))
-                                         (when (first exhaustive-or-missing)
+                                 :primary-note "Non-exaustive match"
+                                 :notes (when (first exhaustive-or-missing)
                                            (list
                                             (error:make-coalton-error-note
                                              :type :secondary
                                              :span (tc:node-source node) ; TODO????
                                              :message (format nil "Missing case ~W" (first exhaustive-or-missing))))))
-                                 ;; TODO: Do we want to add a help to insert the case?
-                                 ))))
-                      (loop :for pattern :in patterns
-                            :unless (useful-pattern-p patterns pattern env) :do
-                              (warn
-                               'useless-pattern-warning
-                               :err (error:make-coalton-error
-                                     :type :warn
-                                     :file file
-                                     :location (car (tc:pattern-source pattern))
-                                     :message "Useless match case"
-                                     :notes (append
-                                             (list
-                                              (error:make-coalton-error-note
-                                               :type :primary
-                                               :span (tc:pattern-source pattern)
-                                               :message "Useless match case")))
-                                     ;; TODO: Do we want to add a help to delete the case?
-                                     ))))
+                           ;; TODO: Do we want to add a help to insert the case?
+                           ))
+                        (loop :for pattern :in patterns
+                              :unless (useful-pattern-p patterns pattern env) :do
+                                (warn
+                                 'useless-pattern-warning
+                                 :err (error:coalton-error
+                                       :type :warn
+                                       :file file
+                                       :span (tc:pattern-source pattern)
+                                       :message "Useless match case"
+                                       :primary-note "Useless match case"
+                                       ;; TODO: Do we want to add a help to delete the case?
+                                       )))))
                     node))))
 
-    ;; Run analysis on definitions
-    (loop :for define :in (tc:translation-unit-definitions translation-unit) :do
-      (tc:traverse (tc:toplevel-define-body define) analysis-traverse-block))
-    ;; Run analysis on instance definitions
-    (loop :for instance :in (tc:translation-unit-instances translation-unit) :do
-      (loop :for method :being :the :hash-value :of (tc:toplevel-define-instance-methods instance) :do
-        (tc:traverse (tc:instance-method-definition-body method) analysis-traverse-block)))))
+  ;; Run analysis on definitions
+  (loop :for define :in (tc:translation-unit-definitions translation-unit) :do
+    (tc:traverse (tc:toplevel-define-body define) analysis-traverse-block))
+  ;; Run analysis on instance definitions
+  (loop :for instance :in (tc:translation-unit-instances translation-unit) :do
+    (loop :for method :being :the :hash-value :of (tc:toplevel-define-instance-methods instance) :do
+      (tc:traverse (tc:instance-method-definition-body method) analysis-traverse-block)))))

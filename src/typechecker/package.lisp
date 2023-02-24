@@ -1,6 +1,7 @@
 (uiop:define-package #:coalton-impl/typechecker
   (:mix-reexport
    #:coalton-impl/typechecker/stage-1
+   #:coalton-impl/typechecker/base
    #:coalton-impl/typechecker/pattern
    #:coalton-impl/typechecker/expression
    #:coalton-impl/typechecker/traverse

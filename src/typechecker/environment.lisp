@@ -782,10 +782,7 @@
            (type symbol symbol))
   (or (immutable-map-lookup (environment-value-environment env) symbol)
       (unless no-error
-        (let* ((sym-name (symbol-name symbol))
-               (valid-bindings (coalton-impl/algorithm::immutable-map-keys (environment-value-environment env)))
-               (matches (remove-if-not (lambda (s) (string= (symbol-name s) sym-name)) valid-bindings)))
-          (error 'unknown-binding-error :symbol symbol :alternatives matches)))))
+        (util:coalton-bug "Unknown binding ~S" symbol))))
 
 (define-env-updater set-value-type (env symbol value)
   (declare (type environment env)
@@ -804,16 +801,7 @@
            (type symbol symbol))
   (or (immutable-map-lookup (environment-type-environment env) symbol)
       (unless no-error
-        (let* ((sym-name (symbol-name symbol))
-               (valid-types (coalton-impl/algorithm::immutable-map-keys (environment-type-environment env)))
-               (matches (remove-if-not (lambda (s) (string= (symbol-name s) sym-name)) valid-types)))
-          (cond
-            ((= 1 (length sym-name))
-             (error "Unknown type ~S. Did you mean the type variable ~S?" symbol (intern sym-name 'keyword)))
-            (matches
-             (error "Unknown type ~S. Did you mean ~{~S~^, ~}?" symbol matches))
-            (t
-             (error "Unknown type ~S" symbol)))))))
+        (util:coalton-bug "Unknown type ~S" symbol))))
 
 (define-env-updater set-type (env symbol value)
   (declare (type environment env)
@@ -832,7 +820,7 @@
            (type symbol symbol))
   (or (immutable-map-lookup (environment-constructor-environment env) symbol)
       (unless no-error
-        (error "Unknown constructor ~S." symbol))))
+        (util:coalton-bug "Unknown constructor ~S." symbol))))
 
 (define-env-updater set-constructor (env symbol value)
   (declare (type environment env)
@@ -851,7 +839,7 @@
            (type symbol symbol))
   (or (immutable-map-lookup (environment-class-environment env) symbol)
       (unless no-error
-        (error "Unknown class ~S." symbol))))
+        (util:coalton-bug "Unknown class ~S." symbol))))
 
 (define-env-updater set-class (env symbol value)
   (declare (type environment env)
@@ -870,7 +858,7 @@
            (type symbol symbol))
   (or (immutable-map-lookup (environment-function-environment env) symbol)
       (unless no-error
-        (error "Unknown function ~S." symbol))))
+        (util:coalton-bug "Unknown function ~S." symbol))))
 
 (define-env-updater set-function (env symbol value)
   (declare (type environment env)
@@ -1096,6 +1084,8 @@
   (declare (type environment env)
            (type specialization-entry entry))
 
+  (error "unsupported")
+  #+ignore
   (let* ((from (specialization-entry-from entry))
          (to (specialization-entry-to entry))
          (to-ty (specialization-entry-to-ty entry)))

@@ -24,16 +24,18 @@
 (define-condition non-exhaustive-match-warning (style-warning)
   ((err :reader non-exhaustive-match-warning-err
         :initarg :err
-        :type error:coalton-error))
+        :type function))
   (:report (lambda (c s)
-             (error:display-coalton-error s (non-exhaustive-match-warning-err c)))))
+             (let ((*print-circle*))
+               (error:display-coalton-error s (funcall (non-exhaustive-match-warning-err c)))))))
 
 (define-condition useless-pattern-warning (style-warning)
   ((err :reader useless-pattern-warning-err
         :initarg :err
-        :type error:coalton-error))
+        :type function))
   (:report (lambda (c s)
-             (error:display-coalton-error s (useless-pattern-warning-err c)))))
+             (let ((*print-circle*))
+               (error:display-coalton-error s (funcall (useless-pattern-warning-err c)))))))
 
 
 (defun exhaustive-patterns-p (patterns env)

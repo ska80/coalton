@@ -62,6 +62,7 @@
 (define-condition parse-error (error)
   ((err :reader parse-error-err
         :initarg :err
-        :type coalton-error))
+        :type function))
   (:report (lambda (c s)
-             (display-coalton-error s (parse-error-err c)))))
+             (let ((*print-circle* nil))
+               (display-coalton-error s (funcall (parse-error-err c)))))))

@@ -15,7 +15,6 @@
    #:make-coalton-error-note            ; FUNCTION
    #:make-coalton-error-help            ; FUNCTION
    #:make-coalton-error-context         ; FUNCTION
-   #:make-coalton-error                 ; FUNCTION
    #:*coalton-error-context*            ; VARIABLE
    #:coalton-error                      ; FUNCTION
    #:coalton-error-location             ; ACCESSOR
@@ -103,14 +102,27 @@
   (help-notes      nil                       :type list                  :read-only t)
   (context         *coalton-error-context*   :type list                  :read-only t))
 
-(defun coalton-error (&key
-                        span
-                        file
-                        (highlight :all)
-                        message
-                        primary-note
-                        notes
-                        help-notes)
+(defmacro coalton-error (&key (type :error) span file (highlight :all) message primary-note notes help-notes)
+  `(lambda ()
+     (coalton-error_
+      :type ,type
+      :span ,span
+      :file ,file
+      :highlight ,highlight
+      :message ,message
+      :primary-note ,primary-note
+      :notes ,notes
+      :help-notes ,help-notes)))
+
+(defun coalton-error_ (&key
+                         (type :error)
+                         span
+                         file
+                         (highlight :all)
+                         message
+                         primary-note
+                         notes
+                         help-notes)
   "Construct a COALTON-ERROR with a message and primary note attached to the provided form.
 
 MESSAGE and PRIMARY-NOTE must be supplied string arguments.
@@ -125,7 +137,7 @@ NOTES and HELP-NOTES may optionally be supplied notes and help messages."
   (let ((start (car span))
         (end (cdr span)))
     (make-coalton-error
-     :type :error
+     :type type
      :file file
      ;; TODO: Do we want to change this based on HIGHLIGHT?
      :location (car span)

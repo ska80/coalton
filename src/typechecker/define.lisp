@@ -82,6 +82,20 @@
                :message "Ambigious predicate"
                :primary-note (format nil "Ambigious predicate ~A" pred))))
 
+(defun error-unknown-pred (pred file)
+  (declare (type tc:ty-predicate pred)
+           (type coalton-file file))
+
+  (unless (tc:ty-predicate-source pred)
+    (util:coalton-bug "Predicate ~A does not have source information" pred))
+
+  (error 'tc-error
+         :err (coalton-error
+               :message "Unknown instance"
+               :span (tc:ty-predicate-source pred)
+               :file file
+               :primary-note (format nil "Unknown instance ~S" pred))))
+
 ;;;
 ;;; Entrypoint
 ;;;
@@ -339,14 +353,16 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
                                env
                                file)
 
-      (let* ((fun-ty_ fun-ty)
+      (let* ((rands (or (parser:node-application-rands node)
+                        (list
+                         (parser:make-node-variable
+                          :source (parser:node-source node)
+                          :name 'coalton:unit))))
+
+             (fun-ty_ fun-ty)
              (rand-nodes
                ;; Apply arguments one at a time for better error messages
-               (loop :for rand :in (or (parser:node-application-rands node)
-                                       (list
-                                        (parser:make-node-variable
-                                         :source (parser:node-source node)
-                                         :name 'coalton:unit)))
+               (loop :for rand :in rands
                      :collect (cond
                                 ;; If the rator is a function then unify against its argument
                                 ((tc:function-type-p fun-ty_)
@@ -394,10 +410,13 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
                                               :span (parser:node-source node)
                                               :file file
                                               :message "Argument error"
-                                              :primary-note (format nil "Function has ~D arguments but inferred type '~A' only takes ~D"
-                                                                    (length (parser:node-application-rands node))
-                                                                    fun-ty
-                                                                    (length (tc:function-type-arguments fun-ty))))))))))
+                                              :primary-note (if (null (tc:function-type-arguments fun-ty))
+                                                                (format nil "Unable to call '~A' it is not a function"
+                                                                        fun-ty)
+                                                                (format nil "Function call has ~D arguments but inferred type '~A' only takes ~D"
+                                                                        (length rands)
+                                                                        fun-ty
+                                                                        (length (tc:function-type-arguments fun-ty)))))))))))
 
         (handler-case
             (progn
@@ -1584,6 +1603,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
             :do (error 'tc-error
                        :err (coalton-error
                              :span (parser:node-source (parser:node-let-declare-name declare))
+                             :file file
                              :message "Orphan declare in let"
                              :primary-note "decleration does not have an associated definition")))
 
@@ -1767,7 +1787,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
 
             ;; Toplevel bindings cannot defer predicates
             (when (and (parser:toplevel binding) deferred-preds)
-              (error-ambigious-pred (first deferred-preds) file))
+              (error-unknown-pred (first deferred-preds) file))
 
             ;; Check that the declared and inferred schemes match
             (unless (equalp declared-ty output-scheme)
@@ -1897,7 +1917,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
                       :do (tc-env-replace-type env name scheme))
 
                 (when (and (parser:toplevel (first bindings)) deferred-preds)
-                  (error-ambigious-pred (first deferred-preds) file))
+                  (error-unknown-pred (first deferred-preds) file))
 
                 (values
                  deferred-preds
