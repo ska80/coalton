@@ -37,12 +37,12 @@
    #:error
    #:Unwrappable #:unwrap-or-else #:with-default #:unwrap #:expect #:as-optional))
 
-#+coalton-release
-(cl:declaim #.coalton-impl:*coalton-optimize-library*)
-
 (in-package #:coalton-library/classes)
 
 (named-readtables:in-readtable coalton:coalton)
+
+#+coalton-release
+(cl:declaim #.coalton-impl/settings:*coalton-optimize-library*)
 
 (coalton-toplevel
   (define-class (Eq :a)
