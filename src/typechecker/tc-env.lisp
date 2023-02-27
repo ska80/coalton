@@ -5,6 +5,7 @@
    #:coalton-impl/typechecker/parse-type)
   (:local-nicknames
    (#:util #:coalton-impl/util)
+   (#:error #:coalton-impl/error)
    (#:parser #:coalton-impl/parser)
    (#:tc #:coalton-impl/typechecker/stage-1))
   (:export
@@ -56,14 +57,33 @@
 
   (let* ((scheme (or (gethash (parser:node-variable-name var) (tc-env-ty-table env))
 
-                 (tc:lookup-value-type (tc-env-env env) (parser:node-variable-name var) :no-error t)
+                     (tc:lookup-value-type (tc-env-env env) (parser:node-variable-name var) :no-error t)
 
-                 (error 'tc-error
-                        :err (coalton-error
-                              :span (parser:node-source var)
-                              :file file
-                              :message "Unknown variable"
-                              :primary-note "unknown variable"))))
+                     ;; Binding is unknown. Create an error.
+                     (let* ((sym-name (symbol-name (parser:node-variable-name var)))
+                            (matches (append
+                                      (remove-if-not
+                                       (lambda (s) (string= (symbol-name s) sym-name))
+                                       (alexandria:hash-table-keys (tc-env-ty-table env)))
+                                      (remove-if-not
+                                       (lambda (s) (string= (symbol-name s) sym-name))
+                                       (coalton-impl/algorithm::immutable-map-keys
+                                        (tc:environment-value-environment (tc-env-env env)))))))
+                       (error 'tc-error
+                              :err (coalton-error
+                                    :span (parser:node-source var)
+                                    :file file
+                                    :message "Unknown variable"
+                                    :primary-note "unknown variable"
+                                    :help-notes (mapcar
+                                                 (lambda (symbol)
+                                                   (error:make-coalton-error-help
+                                                    :span (parser:node-source var)
+                                                    :replacement (lambda (s)
+                                                                   (declare (ignore s))
+                                                                   (format nil "~S" symbol))
+                                                    :message (format nil "Did you mean ~S?" symbol)))
+                                                 matches))))))
 
          (qual-ty (tc:fresh-inst scheme))
 
