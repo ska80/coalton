@@ -136,7 +136,7 @@
      :file-link-prefix file-link-prefix)))
 
 (defun write-documentation-for-packages (&key
-                                           (env coalton-impl::*global-environment*)
+                                           (env coalton-impl/entry::*global-environment*)
                                            (stream t)
                                            backend
                                            packages

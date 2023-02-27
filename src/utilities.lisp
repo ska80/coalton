@@ -22,7 +22,6 @@
    #:maphash-values-new                 ; FUNCTION
    #:find-symbol                        ; FUNCTION
    #:find-symbol?                       ; FUNCTION
-   #:sexp-fmt                           ; FUNCTION
    #:take-until                         ; FUNCTION
    #:project-indicies                   ; FUNCTION
    #:project-map                        ; FUNCTION
@@ -127,21 +126,14 @@
   (declare (type symbol name))
   (coalton-bug "A slot ~S (of package ~S) is required but not supplied" name (symbol-package name)))
 
-(defun sexp-fmt (stream object &optional colon-modifier at-modifier)
-  "A formatter for qualified S-expressions. Use like
-    (format t \"~/coalton-impl::sexp-fmt/\" '(:x y 5))
-and it will print a flat S-expression with all symbols qualified."
-  (declare (ignore colon-modifier at-modifier))
-  (let ((*print-pretty* nil)
-        (*package* (find-package "KEYWORD")))
-    (prin1 object stream)))
-
 (deftype literal-value ()
   "Allowed literal values as Lisp objects."
   '(or integer ratio single-float double-float string character))
 
 (defun literal-equal (x y)
   "Are coalton literal values equal?"
+  (declare (type literal-value x y)
+           (values boolean))
   (equal x y))
 
 
