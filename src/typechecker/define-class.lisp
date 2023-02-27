@@ -225,7 +225,6 @@
     (setf preds (tc:apply-ksubstitution ksubs preds))
 
     (values
-     ;; TODO: split this loop into a seperate function
      (loop :for class :in classes
            :for pred :in preds
            :for partial :in partial-classes

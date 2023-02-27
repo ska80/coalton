@@ -367,8 +367,7 @@
 (defstruct (node-return
             (:include node)
             (:copier nil))
-  ;; Either the returned expression or null in the case of "(return)"
-  (expr (util:required 'expr) :type (or null node) :read-only t))
+  (expr (util:required 'expr) :type node :read-only t))
 
 (defstruct (node-application
             (:include node)

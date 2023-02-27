@@ -45,8 +45,6 @@
    #:attach-explicit-binding-type       ; FUNCTION
    ))
 
-;; TODO: ensure patterns don't bind the same variables multiple times
-
 (in-package #:coalton-impl/typechecker/define)
 
 (declaim (type (member :toplevel :lambda) *return-status*))
@@ -190,7 +188,6 @@
 
       (let (;; Attach explicit types to any explicit bindings
 
-            ;; TODO: Do we need to unify these so that type variables line up for codegen?
             (binding-nodes
               (loop :for node :in binding-nodes
                     :for explicit-type := (gethash (toplevel-define-name node) dec-table)
@@ -242,7 +239,6 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
                 (string tc:*string-type*)
                 (character tc:*char-type*))))
 
-      ;; TODO: this error message isn't very helpful
       (handler-case
           (progn
             (setf subs (tc:unify subs ty expected-type))
@@ -279,9 +275,6 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
            (tvar (tc:make-variable))
 
            (pred (tc:make-ty-predicate :class num :types (list tvar) :source (parser:node-source node))))
-
-      ;; TODO: error out here better if NUM is not defined
-      ;; lol
 
       (handler-case
           (progn
@@ -890,11 +883,12 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
                    :message "Unexpected return"
                    :primary-note "returns must be inside a lambda")))
 
-    ;; TODO: Handle missing return expr
-    (assert (parser:node-return-expr node))
-
     (multiple-value-bind (ty preds expr-node subs)
-        (infer-expression-type (parser:node-return-expr node)
+        (infer-expression-type (or (parser:node-return-expr node)
+                                   ;; If the return looks like (return) then it returns unit
+                                   (parser:make-node-variable
+                                    :source (parser:node-source node)
+                                    :name 'coalton:Unit))
                                (tc:make-variable)
                                subs
                                env

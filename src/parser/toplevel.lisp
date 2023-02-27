@@ -1556,23 +1556,19 @@ consume all attributes")))
                  :message "Malformed function definition"
                  :primary-note "expected symbol")))
 
-  ;; (define (f) ...)
-  (when (cst:atom (cst:rest form))
-    (error 'parse-error
-           :err (coalton-error
-                 :span (cst:source form)
-                 :file file
-                 :message "Malformed function definition"
-                 :primary-note "expected 1 or more arguments")))
-
   (values
    (make-node-variable
     :name (cst:raw (cst:first form))
     :source (cst:source form))
 
-   (loop :for vars := (cst:rest form) :then (cst:rest vars)
-         :while (cst:consp vars)
-         :collect (parse-variable (cst:first vars) file))))
+   (if (cst:null (cst:rest form))
+       (list
+        (make-node-variable
+         :source (cst:source form)
+         :name (gentemp)))
+       (loop :for vars := (cst:rest form) :then (cst:rest vars)
+             :while (cst:consp vars)
+             :collect (parse-variable (cst:first vars) file)))))
 
 (defun parse-identifier (form file)
   (declare (type cst:cst form)
