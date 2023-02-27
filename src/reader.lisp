@@ -55,29 +55,29 @@ Used to forbid reading while inside quasiquoted forms.")
               form)))
       (case first-form
         (coalton:coalton-toplevel
-         (let* ((pathname (or *compile-file-truename* *load-truename*))
-                (filename (if pathname (namestring pathname) "<unknown>"))
+          (let* ((pathname (or *compile-file-truename* *load-truename*))
+                 (filename (if pathname (namestring pathname) "<unknown>"))
 
-                (file-input-stream
-                  (cond
-                    ((or #+sbcl (sb-int:form-tracking-stream-p stream)
-                         nil)
-                     (open (pathname stream)))
-                    (t
-                     stream)))
-                (file (error:make-coalton-file :stream file-input-stream :name filename)))
+                 (file-input-stream
+                   (cond
+                     ((or #+sbcl (sb-int:form-tracking-stream-p stream)
+                          nil)
+                      (open (pathname stream)))
+                     (t
+                      stream)))
+                 (file (error:make-coalton-file :stream file-input-stream :name filename)))
 
-           (handler-case
-               (multiple-value-bind (program env)
-                   (entry:entry-point (parser:read-program stream file :mode :toplevel-macro))
-                 (setf entry:*global-environment* env)
-                 program)
-             (parser:parse-error (c)
-               (set-highlight-position-for-error stream (parser:parse-error-err c))
-               (error c))
-             (tc:tc-error (c)
-               (set-highlight-position-for-error stream (tc:tc-error-err c))
-               (error c)))))
+            (handler-bind
+                ((parser:parse-error
+                   (lambda (c)
+                     (set-highlight-position-for-error stream (funcall (parser:parse-error-err c)))))
+                 (tc:tc-error
+                   (lambda (c)
+                     (set-highlight-position-for-error stream (funcall (tc:tc-error-err c))))))
+              (multiple-value-bind (program env)
+                  (entry:entry-point (parser:read-program stream file :mode :toplevel-macro))
+                (setf entry:*global-environment* env)
+                program))))
 
         (coalton:coalton
          (let* ((pathname (or *compile-file-truename* *load-truename*))
@@ -92,14 +92,14 @@ Used to forbid reading while inside quasiquoted forms.")
                      stream)))
                 (file (error:make-coalton-file :stream file-input-stream :name filename)))
 
-           (handler-case
-               (entry:expression-entry-point (parser:read-expression stream file) file)
-             (parser:parse-error (c)
-               (set-highlight-position-for-error stream (parser:parse-error-err c))
-               (error c))
-             (tc:tc-error (c)
-               (set-highlight-position-for-error stream (tc:tc-error-err c))
-               (error c)))))
+           (handler-bind
+               ((parser:parse-error
+                  (lambda (c)
+                    (set-highlight-position-for-error stream (funcall (parser:parse-error-err c)))))
+                (tc:tc-error
+                  (lambda (c)
+                    (set-highlight-position-for-error stream (funcall (tc:tc-error-err c))))))
+             (entry:expression-entry-point (parser:read-expression stream file) file))))
 
         ;; Fall back to reading the list manually
         (t
