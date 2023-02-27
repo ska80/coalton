@@ -58,9 +58,13 @@
    env))
 
 (defun pattern-matrix-p (x)
-  ;; TODO: Check that all lengths are equal
   (and (alexandria:proper-list-p x)
-       (every #'tc:pattern-list-p x)))
+       (every #'tc:pattern-list-p x)
+       (or (null x)
+           (every
+            (lambda (l)
+              (= (length l) (length (first x))))
+            (cdr x)))))
 
 (deftype pattern-matrix ()
   '(satisfies pattern-matrix-p))
@@ -145,9 +149,9 @@ CLAUSE is a list representing a row-vector of patterns."
         :append (cond
                   ;; If ELEM is the same literal then remove this pattern.
                   ((and (tc:pattern-literal-p elem)
-                        ;; TODO: Figure out a better equality check
-                        (equal (tc:pattern-literal-value pattern)
-                               (tc:pattern-literal-value elem)))
+                        (util:literal-equal
+                         (tc:pattern-literal-value pattern)
+                         (tc:pattern-literal-value elem)))
                    (list (rest row)))
                   ;; If ELEM is not the same literal then emit nothing.
                   ((tc:pattern-literal-p elem)
@@ -297,7 +301,9 @@ CLAUSE is a list representing a row-vector of patterns."
     (unless unnamed-constructor
       (util:coalton-bug "Not reachable."))
 
-    ;; TODO: Return all constructors?
+    ;; NOTE: Here we _could_ reasonably return all missing
+    ;; constructors, however that would require additional support in
+    ;; the error generation. Instead we just select the first one.
     (tc:make-pattern-constructor
      :type (tc:pattern-type (first patterns))
      :source (cons nil nil)

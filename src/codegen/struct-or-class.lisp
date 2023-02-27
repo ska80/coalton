@@ -72,7 +72,7 @@
                       :append `(,name (error ""))))))
 
          (list
-          ;; TODO: This causes SBCL IR1 bugs for instance definitions.
+          ;; NOTE: We are omitting the inline call because this causes SBCL IR1 bugs for instance definitions.
           ;; `(declaim (inline ,constructor))
           `(defun ,constructor ,field-names
              ,@(when settings:*emit-type-annotations*

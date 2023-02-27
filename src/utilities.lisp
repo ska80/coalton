@@ -18,6 +18,7 @@
    #:cst-list                           ; TYPE
    #:cst-source-range                   ; FUNCTION
    #:literal-value                      ; TYPE
+   #:literal-equal                      ; FUNCTION
    #:maphash-values-new                 ; FUNCTION
    #:find-symbol                        ; FUNCTION
    #:find-symbol?                       ; FUNCTION
@@ -138,6 +139,10 @@ and it will print a flat S-expression with all symbols qualified."
 (deftype literal-value ()
   "Allowed literal values as Lisp objects."
   '(or integer ratio single-float double-float string character))
+
+(defun literal-equal (x y)
+  "Are coalton literal values equal?"
+  (equal x y))
 
 
 (defun take-until (pred list)

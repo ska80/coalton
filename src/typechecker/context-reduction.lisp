@@ -101,7 +101,6 @@ Returns (PREDS FOUNDP)"
                      (simp-loop (append (list (first ps)) rs) (rest ps))))))
     (simp-loop nil preds)))
 
-;; TODO: Remove unused param
 (defun reduce-context (env preds subs)
   (let ((env (apply-substitution subs env))
         (preds (apply-substitution subs preds)))

@@ -229,9 +229,9 @@
 
 (defstruct (node-match-branch
             (:copier nil))
-  (pattern (util:required 'pattern) :type pattern   :read-only t)
-  (body    (util:required 'body)    :type node-body :read-only t)
-  (source  (util:required 'source)  :type cons      :read-only t))
+  (pattern    (util:required 'pattern) :type pattern   :read-only t)
+  (body       (util:required 'body)    :type node-body :read-only t)
+  (source     (util:required 'source)  :type cons      :read-only t))
 
 (defun node-match-branch-list-p (x)
   (and (alexandria:proper-list-p x)
@@ -243,8 +243,8 @@
 (defstruct (node-match
             (:include node)
             (:copier nil))
-  (expr     (util:required 'expr)     :type node                   :read-only t)
-  (branches (util:required 'branches) :type node-match-branch-list :read-only t))
+  (expr     (util:required 'expr)         :type node                   :read-only t)
+  (branches (util:required 'branches)     :type node-match-branch-list :read-only t))
 
 (defstruct (node-progn
             (:include node)

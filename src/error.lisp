@@ -74,11 +74,27 @@
   (span    (util:required 'span)    :type (cons integer integer)       :read-only t)
   (message (util:required 'message) :type string                       :read-only t))
 
+(defun coalton-error-note-list-p (x)
+  (and (alexandria:proper-list-p x)
+       (every #'coalton-error-note-p x)))
+
+(deftype coalton-error-note-list ()
+  '(satisfies coalton-error-note-list-p))
+
+
 (defstruct (coalton-error-help
             (:copier nil))
   (span        (util:required 'span)        :type (cons integer integer)     :read-only t)
   (replacement (util:required 'replacement) :type (function (string) string) :read-only t)
   (message     (util:required 'message)     :type string                     :read-only t))
+
+(defun coalton-error-help-list-p (x)
+  (and (alexandria:proper-list-p x)
+       (every #'coalton-error-help-p x)))
+
+(deftype coalton-error-help-list ()
+  '(satisfies coalton-error-help-list-p))
+
 
 (defstruct (coalton-error-context
             (:copier nil))
@@ -91,16 +107,15 @@
   (stream (util:required 'stream) :type stream :read-only t)
   (name   (util:required 'file)   :type string :read-only t))
 
-;; TODO: specify list type
 (defstruct (coalton-error
             (:copier nil))
-  (type            (util:required 'type)     :type (member :error :warn) :read-only t)
-  (file            (util:required 'file)     :type coalton-file          :read-only t)
-  (location        (util:required 'location) :type integer               :read-only t)
-  (message         (util:required 'message)  :type string                :read-only t)
-  (notes           (util:required 'notes)    :type list                  :read-only t)
-  (help-notes      nil                       :type list                  :read-only t)
-  (context         *coalton-error-context*   :type list                  :read-only t))
+  (type            (util:required 'type)     :type (member :error :warn)   :read-only t)
+  (file            (util:required 'file)     :type coalton-file            :read-only t)
+  (location        (util:required 'location) :type integer                 :read-only t)
+  (message         (util:required 'message)  :type string                  :read-only t)
+  (notes           (util:required 'notes)    :type coalton-error-note-list :read-only t)
+  (help-notes      nil                       :type coalton-error-help-list :read-only t)
+  (context         *coalton-error-context*   :type list                    :read-only t))
 
 (defmacro coalton-error (&key (type :error) span file (highlight :all) message primary-note notes help-notes)
   `(lambda ()
@@ -139,8 +154,9 @@ NOTES and HELP-NOTES may optionally be supplied notes and help messages."
     (make-coalton-error
      :type type
      :file file
-     ;; TODO: Do we want to change this based on HIGHLIGHT?
-     :location (car span)
+     :location (ecase highlight
+                 (:all (car span))
+                 (:end (cdr span)))
      :message message
      :notes (list*
              (ecase highlight
@@ -470,7 +486,6 @@ Returns (VALUES LINE-NUM LINE-START-INDEX)"
                       line-start-index (1+ i)))
     (values line line-start-index)))
 
-;; TODO: names here are chaotic
 (defun get-source-line-info (file form)
   "Get source information about FORM which can be used in errors.
 

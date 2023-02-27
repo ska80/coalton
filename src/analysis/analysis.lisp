@@ -33,13 +33,11 @@
                                  :message "Non-exhaustive match"
                                  :primary-note "Non-exaustive match"
                                  :notes (when (first exhaustive-or-missing)
-                                           (list
-                                            (error:make-coalton-error-note
-                                             :type :secondary
-                                             :span (tc:node-source node) ; TODO????
-                                             :message (format nil "Missing case ~W" (first exhaustive-or-missing))))))
-                           ;; TODO: Do we want to add a help to insert the case?
-                           ))
+                                          (list
+                                           (error:make-coalton-error-note
+                                            :type :secondary
+                                            :span (tc:node-source node)
+                                            :message (format nil "Missing case ~W" (first exhaustive-or-missing))))))))
                         (loop :for pattern :in patterns
                               :unless (useful-pattern-p patterns pattern env) :do
                                 (warn
@@ -50,14 +48,16 @@
                                        :span (tc:pattern-source pattern)
                                        :message "Useless match case"
                                        :primary-note "Useless match case"
-                                       ;; TODO: Do we want to add a help to delete the case?
-                                       )))))
+                                       :notes (list (error:make-coalton-error-note
+                                                     :type :secondary
+                                                     :span (tc:node-source node)
+                                                     :message "in this match")))))))
                     node))))
 
-  ;; Run analysis on definitions
-  (loop :for define :in (tc:translation-unit-definitions translation-unit) :do
-    (tc:traverse (tc:toplevel-define-body define) analysis-traverse-block))
-  ;; Run analysis on instance definitions
-  (loop :for instance :in (tc:translation-unit-instances translation-unit) :do
-    (loop :for method :being :the :hash-value :of (tc:toplevel-define-instance-methods instance) :do
-      (tc:traverse (tc:instance-method-definition-body method) analysis-traverse-block)))))
+    ;; Run analysis on definitions
+    (loop :for define :in (tc:translation-unit-definitions translation-unit) :do
+      (tc:traverse (tc:toplevel-define-body define) analysis-traverse-block))
+    ;; Run analysis on instance definitions
+    (loop :for instance :in (tc:translation-unit-instances translation-unit) :do
+      (loop :for method :being :the :hash-value :of (tc:toplevel-define-instance-methods instance) :do
+        (tc:traverse (tc:instance-method-definition-body method) analysis-traverse-block)))))

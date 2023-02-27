@@ -111,10 +111,8 @@
     (when (and (equalp (node-type (node-match-expr expr)) tc:*boolean-type*)
                (= 2 (length (node-match-branches expr)))
                (equalp (match-branch-pattern (first (node-match-branches expr)))
-                       ;; TODO: Grab the symbols dynamically!!!
                        (make-pattern-constructor :type tc:*boolean-type* :name 'coalton:True :patterns nil))
                (equalp (match-branch-pattern (second (node-match-branches expr)))
-                       ;; TODO: Same here
                        (make-pattern-constructor :type tc:*boolean-type* :name 'coalton:False :patterns nil)))
       (return-from codegen-expression
         `(if ,(codegen-expression (node-match-expr expr) current-function env)
