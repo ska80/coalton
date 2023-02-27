@@ -82,6 +82,7 @@
                              (:file "tc-env")
                              (:file "define")
                              (:file "define-instance")
+                             (:file "specialize")
                              (:file "translation-unit")
                              (:file "package")))
                (:module "analysis"

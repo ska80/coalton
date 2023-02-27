@@ -28,5 +28,4 @@
   (definitions     nil                      :type toplevel-define-list           :read-only t)
   (instances       nil                      :type toplevel-define-instance-list  :read-only t)
   (classes         nil                      :type ty-class-list                  :read-only t)
-  (package         (util:required 'package) :type package                        :read-only t)
-  (specializations nil                      :type specialization-entry-list      :read-only t))
+  (package         (util:required 'package) :type package                        :read-only t))

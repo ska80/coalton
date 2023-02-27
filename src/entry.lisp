@@ -56,15 +56,15 @@
                                                 env
                                                 file)
 
+              (setf env (tc:toplevel-specialize (parser:program-specializations program) env file))
+
               (let ((translation-unit
                       (tc:make-translation-unit
                        :types type-definitions
                        :definitions toplevel-definitions
                        :classes class-definitions
                        :instances toplevel-instances
-                       :package *package*
-                       :specializations nil ;; TODO
-                       )))
+                       :package *package*)))
 
                 (analysis:analyze-translation-unit translation-unit env file)
 

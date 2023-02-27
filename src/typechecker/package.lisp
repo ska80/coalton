@@ -14,4 +14,5 @@
    #:coalton-impl/typechecker/tc-env
    #:coalton-impl/typechecker/define
    #:coalton-impl/typechecker/define-instance
+   #:coalton-impl/typechecker/specialize
    #:coalton-impl/typechecker/translation-unit))

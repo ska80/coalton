@@ -96,6 +96,7 @@
    #:toplevel-specialize-from           ; ACCESSOR
    #:toplevel-specialize-to             ; ACCESSOR
    #:toplevel-specialize-type           ; ACCESSOR
+   #:toplevel-specialize-source         ; ACCESSOR
    #:toplevel-specialize-list           ; TYPE
    #:program                            ; STRUCT
    #:make-program                       ; CONSTRUCTOR
@@ -170,7 +171,7 @@
 ;;;;                           | "(" "define-instance" "(" ty-predicate "=>" ty-predicate ")" docstring? instance-method-definition ")"
 ;;;;                           | "(" "define-instance" "(" ( "(" ty-predicate ")" )+ "=>" ty-predicate ")" docstring? instance-method-definition+ ")"
 ;;;;
-;;;; toplevel-specialize := "(" identifier qualified-ty ty ")"
+;;;; toplevel-specialize := "(" identifier identifier ty ")"
 
 ;;
 ;; Attributes
@@ -337,9 +338,10 @@
 
 (defstruct (toplevel-specialize
             (:copier nil))
-  (from (util:required 'from) :type node-variable :read-only t)
-  (to   (util:required 'to)   :type node-variable :read-only t)
-  (type (util:required 'type) :type qualified-ty  :read-only t))
+  (from   (util:required 'from)   :type node-variable :read-only t)
+  (to     (util:required 'to)     :type node-variable :read-only t)
+  (type   (util:required 'type)   :type ty            :read-only t)
+  (source (util:required 'source) :type cons          :read-only t))
 
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (defun toplevel-specialize-list-p (x)
@@ -349,17 +351,16 @@
 (deftype toplevel-specialize-list ()
   '(satisfies toplevel-specialize-list-p))
 
-;;; TODO: should package and file slots be removed?
 (defstruct (program
             (:copier nil))
-  (package         (util:required 'package) :type package                       :read-only t)
-  (file            (util:required 'file)    :type coalton-file                  :read-only t)
-  (types           nil                      :type toplevel-define-type-list     :read-only nil)
-  (declares        nil                      :type toplevel-declare-list         :read-only nil)
-  (defines         nil                      :type toplevel-define-list          :read-only nil)
-  (classes         nil                      :type toplevel-define-class-list    :read-only nil)
-  (instances       nil                      :type toplevel-define-instance-list :read-only nil)
-  (specializations nil                      :type toplevel-specialize-list      :read-only nil))
+  (package         (util:required 'package)         :type package                       :read-only t)
+  (file            (util:required 'file)            :type coalton-file                  :read-only t)
+  (types           (util:required 'types)           :type toplevel-define-type-list     :read-only nil)
+  (declares        (util:required 'declares)        :type toplevel-declare-list         :read-only nil)
+  (defines         (util:required 'defines)         :type toplevel-define-list          :read-only nil)
+  (classes         (util:required 'classes)         :type toplevel-define-class-list    :read-only nil)
+  (instances       (util:required 'instances)       :type toplevel-define-instance-list :read-only nil)
+  (specializations (util:required 'specializations) :type toplevel-specialize-list      :read-only nil))
 
 ;;
 ;; Empty package for reading (package) forms
@@ -397,7 +398,15 @@
         (setf *package* (parse-package package-form file))))
 
     ;; imma parsin mah program
-    (let* ((program (make-program :package *package* :file file))
+    (let* ((program (make-program
+                     :package *package*
+                     :file file
+                     :types nil
+                     :declares nil
+                     :defines nil
+                     :classes nil
+                     :instances nil
+                     :specializations nil))
 
            (attributes (make-array 0 :adjustable t :fill-pointer t)))
 
@@ -453,6 +462,7 @@ consume all attributes")))
       (setf (program-declares program) (nreverse (program-declares program)))
       (setf (program-defines program) (nreverse (program-defines program)))
       (setf (program-classes program) (nreverse (program-classes program)))
+      (setf (program-specializations program) (nreverse (program-specializations program)))
 
       program)))
 
@@ -1379,7 +1389,8 @@ consume all attributes")))
   (make-toplevel-specialize
    :from (parse-variable (cst:second form) file)
    :to (parse-variable (cst:third form) file)
-   :type (parse-qualified-type (cst:fourth form) file)))
+   :type (parse-type (cst:fourth form) file)
+   :source (cst:source form)))
 
 (defun parse-method (method-form form file)
   (declare (type cst:cst method-form)

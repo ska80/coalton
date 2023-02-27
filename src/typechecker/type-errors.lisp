@@ -12,45 +12,48 @@
   (:export
    #:coalton-type-error)
   (:export
-   #:unknown-binding-error                ; CONDITION
-   #:unification-error                    ; CONDITION
-   #:infinite-type-unification-error      ; CONDITION
-   #:type-declaration-too-general-error   ; CONDITION
-   #:type-construction-error              ; CONDITION
-   #:kind-mismatch-error                  ; CONDITION
-   #:type-kind-mismatch-error             ; CONDITION
-   #:invalid-operator-type-error          ; CONDITION
-   #:predicate-unification-error          ; CONDITION
-   #:overlapping-instance-error           ; CONDITION
-   #:instance-missing-context-error       ; CONDITION
-   #:cyclic-class-definitions-error       ; CONDITION
-   #:invalid-typed-node-type              ; CONDITION
-   #:unknown-type-variable                ; CONDITION
-   #:unknown-constructor                  ; CONDITION
-   #:invalid-constructor-arguments        ; CONDITION
-   #:context-reduction-failure            ; CONDITION
-   #:weak-context-error                   ; CONDITION
-   #:recursive-binding-error              ; CONDITION
-   #:self-recursive-toplevel-form         ; CONDITION
-   #:self-recursive-non-constructor-call  ; CONDITION
-   #:self-recursive-partial-application   ; CONDITION
-   #:self-recursive-non-default-repr      ; CONDITION
-   #:mutually-recursive-function-and-data ; CONDITION
-   #:declared-type-missing-predicates     ; CONDITION
-   #:declared-type-additional-predicates  ; CONDITION
-   #:toplevel-monomorphism-restriction    ; CONDITION
-   #:ambigious-constraint                 ; CONDITION
-   #:ambigious-constraint-pred            ; ACCESSOR
-   #:unresolvable-constraint              ; CONDITION
-   #:duplicate-definition                 ; CONDITION
-   #:unexpected-return                    ; CONDITION
-   #:duplicate-ctor                       ; CONDITION
-   #:coalton-type-parse-error             ; CONDITION
-   #:error-parsing-type                   ; FUNCTION
-   #:fundep-conflict                      ; CONDITION
-   #:fundep-variable-error                ; CONDITION
-   #:ambigious-constraint-variables       ; CONDITION
-   #:invalid-fundep-change                ; CONDITION
+   #:unknown-binding-error                     ; CONDITION
+   #:unification-error                         ; CONDITION
+   #:infinite-type-unification-error           ; CONDITION
+   #:type-declaration-too-general-error        ; CONDITION
+   #:type-construction-error                   ; CONDITION
+   #:kind-mismatch-error                       ; CONDITION
+   #:type-kind-mismatch-error                  ; CONDITION
+   #:invalid-operator-type-error               ; CONDITION
+   #:predicate-unification-error               ; CONDITION
+   #:overlapping-instance-error                ; CONDITION
+   #:instance-missing-context-error            ; CONDITION
+   #:cyclic-class-definitions-error            ; CONDITION
+   #:invalid-typed-node-type                   ; CONDITION
+   #:unknown-type-variable                     ; CONDITION
+   #:unknown-constructor                       ; CONDITION
+   #:invalid-constructor-arguments             ; CONDITION
+   #:context-reduction-failure                 ; CONDITION
+   #:weak-context-error                        ; CONDITION
+   #:recursive-binding-error                   ; CONDITION
+   #:self-recursive-toplevel-form              ; CONDITION
+   #:self-recursive-non-constructor-call       ; CONDITION
+   #:self-recursive-partial-application        ; CONDITION
+   #:self-recursive-non-default-repr           ; CONDITION
+   #:mutually-recursive-function-and-data      ; CONDITION
+   #:declared-type-missing-predicates          ; CONDITION
+   #:declared-type-additional-predicates       ; CONDITION
+   #:toplevel-monomorphism-restriction         ; CONDITION
+   #:ambigious-constraint                      ; CONDITION
+   #:ambigious-constraint-pred                 ; ACCESSOR
+   #:unresolvable-constraint                   ; CONDITION
+   #:duplicate-definition                      ; CONDITION
+   #:unexpected-return                         ; CONDITION
+   #:duplicate-ctor                            ; CONDITION
+   #:coalton-type-parse-error                  ; CONDITION
+   #:error-parsing-type                        ; FUNCTION
+   #:fundep-conflict                           ; CONDITION
+   #:fundep-variable-error                     ; CONDITION
+   #:ambigious-constraint-variables            ; CONDITION
+   #:invalid-fundep-change                     ; CONDITION
+   #:overlapping-specialization-error          ; CONDITION
+   #:overlapping-specialization-error-new      ; ACCESSOR
+   #:overlapping-specialization-error-existing ; ACCESSOR
    ))
 
 (in-package #:coalton-impl/typechecker/type-errors)
@@ -193,3 +196,9 @@
                  (fundep-conflict-new-to-tys c)
                  (fundep-conflict-old-from-tys c)
                  (fundep-conflict-old-to-tys c)))))))
+
+(define-condition overlapping-specialization-error (coalton-type-error)
+  ((new :initarg :new
+        :reader overlapping-specialization-error-new)
+   (existing :initarg :existing
+             :reader overlapping-specialization-error-existing)))

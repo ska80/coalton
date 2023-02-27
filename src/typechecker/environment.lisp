@@ -1084,37 +1084,37 @@
   (declare (type environment env)
            (type specialization-entry entry))
 
-  (error "unsupported")
-  #+ignore
   (let* ((from (specialization-entry-from entry))
          (to (specialization-entry-to entry))
-         (to-ty (specialization-entry-to-ty entry)))
+         (to-ty (specialization-entry-to-ty entry))
+
+         (to-scheme (quantify (type-variables to-ty)
+                              (qualify nil to-ty))))
 
     (fset:do-seq (elem (immutable-listmap-lookup (environment-specialization-environment env) from :no-error t) :index index)
-      ;; TODO: Write type=
-      (when (type= to-ty (specialization-entry-to-ty elem))
-        (return-from add-specialization
-          (update-environment env
-                              :specialization-environment
-                              (immutable-listmap-replace
-                               (environment-specialization-environment env)
-                               from
-                               index
-                               entry
-                               #'make-specialization-environment))))
+      (let* ((type (specialization-entry-to-ty elem))
+             (scheme (quantify (type-variables type)
+                               (qualify nil type))))
+
+        (when (equalp to-scheme scheme)
+          (return-from add-specialization
+            (update-environment env
+                                :specialization-environment
+                                (immutable-listmap-replace
+                                 (environment-specialization-environment env)
+                                 from
+                                 index
+                                 entry
+                                 #'make-specialization-environment)))))
 
       (handler-case
           (progn
             (unify nil to-ty (specialization-entry-to-ty elem))
-            (with-pprint-variable-context ()
-              (error "Invalid overlapping specialization for function ~A.~%Specialization target ~A with type ~A~%overlapps ~A with type ~A"
-                     from
-                     to
-                     to-ty
-                     (specialization-entry-to elem)
-                     (specialization-entry-to-ty elem))))
-        (coalton-type-error (e)
-          (declare (ignore e)))))
+
+            (error 'overlapping-specialization-error
+                   :new to
+                   :existing (specialization-entry-to elem)))
+        (unification-error ())))
 
     (update-environment env
                         :specialization-environment
