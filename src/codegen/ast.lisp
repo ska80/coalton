@@ -5,6 +5,7 @@
   (:local-nicknames
    (#:util #:coalton-impl/util)
    (#:algo #:coalton-impl/algorithm)
+   (#:parser #:coalton-impl/parser)
    (#:tc #:coalton-impl/typechecker))
   (:export
    #:node                               ; STRUCT
@@ -89,8 +90,6 @@
 ;;; Compiler Backend IR
 ;;;
 
-;;; TODO: We should replace all 'symbol' with 'parser:identifier'
-
 
 (defstruct (node (:constructor nil))
   (type (util:required 'type) :type tc:ty :read-only t))
@@ -107,7 +106,7 @@
 
 (defun binding-list-p (x)
   (and (alexandria:proper-list-p x)
-       (every (lambda (b) (typep b '(cons symbol node))) x)))
+       (every (lambda (b) (typep b '(cons parser:identifier node))) x)))
 
 (deftype binding-list ()
   '(satisfies binding-list-p))
@@ -118,7 +117,7 @@
 
 (defstruct (node-variable (:include node))
   "Variables like x or y"
-  (value (util:required 'value) :type symbol :read-only t))
+  (value (util:required 'value) :type parser:identifier :read-only t))
 
 (defstruct (node-application (:include node))
   "Function application (f x)"
@@ -127,14 +126,14 @@
 
 (defstruct (node-direct-application (:include node))
   "Fully saturated function application of a known function"
-  (rator-type (util:required 'rator-type) :type tc:ty     :read-only t)
-  (rator      (util:required 'rator)      :type symbol    :read-only t)
-  (rands      (util:required 'rands)      :type node-list :read-only t))
+  (rator-type (util:required 'rator-type) :type tc:ty             :read-only t)
+  (rator      (util:required 'rator)      :type parser:identifier :read-only t)
+  (rands      (util:required 'rands)      :type node-list         :read-only t))
 
 (defstruct (node-abstraction (:include node))
   "Lambda literals (fn (x) x)"
-  (vars    (util:required 'vars)    :type util:symbol-list        :read-only t)
-  (subexpr (util:required 'subexpr) :type node               :read-only t))
+  (vars    (util:required 'vars)    :type parser:identifier-list :read-only t)
+  (subexpr (util:required 'subexpr) :type node                   :read-only t))
 
 (defstruct (node-let (:include node))
   "Introduction of local mutually-recursive bindings (let ((x 2)) (+ x x))"
@@ -176,31 +175,31 @@
 
 (defstruct (node-field (:include node))
   "Accessing a superclass on a typeclass dictionary"
-  (name (util:required 'field) :type symbol :read-only t)
-  (dict (util:required 'dict)  :type node   :read-only t))
+  (name (util:required 'field) :type parser:identifier :read-only t)
+  (dict (util:required 'dict)  :type node              :read-only t))
 
 (defstruct (node-dynamic-extent (:include node))
   "A single stack allocated binding"
-  (name (util:required 'name) :type symbol :read-only t)
-  (node (util:required 'node) :type node   :read-only t)
-  (body (util:required 'body) :type node   :read-only t))
+  (name (util:required 'name) :type parser:identifier :read-only t)
+  (node (util:required 'node) :type node              :read-only t)
+  (body (util:required 'body) :type node              :read-only t))
 
 (defstruct (node-bind (:include node))
   "A single non-recursive binding"
-  (name (util:required 'name) :type symbol :read-only t)
-  (expr (util:required 'expr) :type node   :read-only t)
-  (body (util:required 'body) :type node   :read-only t))
+  (name (util:required 'name) :type parser:identifier :read-only t)
+  (expr (util:required 'expr) :type node              :read-only t)
+  (body (util:required 'body) :type node              :read-only t))
 
 ;;;
 ;;; Functions
 ;;;
 
 (defun node-variables (node &key variable-namespace-only)
-  "Returns a deduplicated list of symbols representing variables in
+  "Returns a deduplicated list of identifiers representing variables in
 both CL namespaces appearing in NODE"
   (declare (type node node)
            (type boolean variable-namespace-only)
-           (values util:symbol-list &optional))
+           (values parser:identifier-list &optional))
   (remove-duplicates (node-variables-g node :variable-namespace-only variable-namespace-only) :test #'equalp))
 
 (defun node-binding-sccs (bindings)
@@ -215,14 +214,14 @@ both CL namespaces appearing in NODE"
 (defun node-free-p (node bound-variables)
   "Returns true if every variable in NODE is free with respect to BOUND-VARIABLES"
   (declare (type node node)
-           (type util:symbol-list bound-variables)
+           (type parser:identifier-list bound-variables)
            (values boolean))
   (null (intersection (node-variables node) bound-variables)))
 
 (defun node-application-symbol-rator (node)
   "Returns the name of the function being called if it is known"
   (declare (type (or node-application node-direct-application) node)
-           (values (or null symbol)))
+           (values (or null parser:identifier)))
   (etypecase node
     (node-direct-application
      (node-direct-application-rator node))
@@ -245,7 +244,7 @@ both CL namespaces appearing in NODE"
 
 (defun node-rator-name (node)
   (declare (type (or node-application node-direct-application))
-           (values (or null symbol)))
+           (values (or null parser:identifier)))
   (etypecase node
     (node-direct-application
      (node-direct-application-rator node))
@@ -269,22 +268,19 @@ both CL namespaces appearing in NODE"
 ;;;
 
 
-
-;;; TODO: this should use ncnoc and friends
-
 (defgeneric node-variables-g (node &key variable-namespace-only)
   (:method ((node node-literal) &key variable-namespace-only)
     (declare (ignore node variable-namespace-only)
-             (values util:symbol-list))
+             (values parser:identifier-list))
     nil)
 
   (:method ((node node-variable) &key variable-namespace-only)
     (declare (ignore variable-namespace-only)
-             (values util:symbol-list &optional))
+             (values parser:identifier-list &optional))
     (list (node-variable-value node)))
 
   (:method ((node node-application) &key variable-namespace-only)
-    (declare (values util:symbol-list &optional))
+    (declare (values parser:identifier-list &optional))
     (append
      (node-variables-g (node-application-rator node) :variable-namespace-only variable-namespace-only)
      (mapcan
@@ -293,11 +289,11 @@ both CL namespaces appearing in NODE"
       (node-application-rands node))))
 
   (:method ((node node-abstraction) &key variable-namespace-only)
-    (declare (values util:symbol-list &optional))
+    (declare (values parser:identifier-list &optional))
     (node-variables-g (node-abstraction-subexpr node) :variable-namespace-only variable-namespace-only))
 
   (:method ((node node-direct-application) &key variable-namespace-only)
-    (declare (values util:symbol-list &optional))
+    (declare (values parser:identifier-list &optional))
     (if variable-namespace-only
         (mapcan
          (lambda (node)
@@ -310,10 +306,10 @@ both CL namespaces appearing in NODE"
                (node-direct-application-rands node)))))
 
   (:method ((node node-let) &key variable-namespace-only)
-    (declare (values util:symbol-list))
+    (declare (values parser:identifier-list))
     (append
      (loop :for (name . node) :in (node-let-bindings node)
-           :append (node-variables-g node :variable-namespace-only variable-namespace-only))
+           :nconc (node-variables-g node :variable-namespace-only variable-namespace-only))
      (node-variables-g (node-let-subexpr node) :variable-namespace-only variable-namespace-only)))
 
   (:method ((node node-lisp) &key variable-namespace-only)
@@ -321,12 +317,12 @@ both CL namespaces appearing in NODE"
     (mapcar #'cdr (node-lisp-vars node)))
 
   (:method ((node match-branch) &key variable-namespace-only)
-    (declare (values util:symbol-list &optional))
+    (declare (values parser:identifier-list &optional))
     (node-variables-g (match-branch-body node) :variable-namespace-only variable-namespace-only))
 
   (:method ((node node-match) &key variable-namespace-only)
-    (declare (values util:symbol-list &optional))
-    (append
+    (declare (values parser:identifier-list &optional))
+    (nconc
      (node-variables-g (node-match-expr node) :variable-namespace-only variable-namespace-only)
      (mapcan
       (lambda (node)
@@ -334,29 +330,29 @@ both CL namespaces appearing in NODE"
       (node-match-branches node))))
 
   (:method ((node node-seq) &key variable-namespace-only)
-    (declare (values util:symbol-list &optional))
+    (declare (values parser:identifier-list &optional))
     (mapcan
      (lambda (node)
        (node-variables-g node :variable-namespace-only variable-namespace-only))
      (node-seq-nodes node)))
 
   (:method ((node node-return) &key variable-namespace-only)
-    (declare (values util:symbol-list &optional))
+    (declare (values parser:identifier-list &optional))
     (node-variables-g (node-return-expr node) :variable-namespace-only variable-namespace-only))
 
   (:method ((node node-field) &key variable-namespace-only)
-    (declare (values util:symbol-list &optional))
+    (declare (values parser:identifier-list &optional))
     (node-variables-g (node-field-dict node) :variable-namespace-only variable-namespace-only))
 
   (:method ((node node-dynamic-extent) &key variable-namespace-only)
-    (declare (values util:symbol-list &optional))
-    (append
+    (declare (values parser:identifier-list &optional))
+    (nconc
      (node-variables-g (node-dynamic-extent-node node) :variable-namespace-only variable-namespace-only)
      (node-variables-g (node-dynamic-extent-body node) :variable-namespace-only variable-namespace-only)))
 
   (:method ((node node-bind) &key variable-namespace-only)
-    (declare (values util:symbol-list &optional))
-    (append
+    (declare (values parser:identifier-list &optional))
+    (nconc
      (node-variables-g (node-bind-expr node) :variable-namespace-only variable-namespace-only)
      (node-variables-g (node-bind-body node) :variable-namespace-only variable-namespace-only))))
 

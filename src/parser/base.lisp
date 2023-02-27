@@ -9,6 +9,7 @@
   (:export
    #:identifier                         ; TYPE
    #:identifierp                        ; FUNCTION
+   #:identifier-list                    ; TYPE
    #:keyword-src                        ; STRUCT
    #:make-keyword-src                   ; CONSTRUCTOR
    #:keyword-src-name                   ; ACCESSOR
@@ -34,6 +35,13 @@
 
 (defun identifierp (x)
   (typep x 'identifier))
+
+(defun identifier-list-p (x)
+  (and (alexandria:proper-list-p x)
+       (every #'identifierp x)))
+
+(deftype identifier-list ()
+  '(satisfies identifier-list-p))
 
 (defstruct (keyword-src
             (:copier nil))
