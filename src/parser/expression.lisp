@@ -293,7 +293,6 @@
   (vars (util:required 'vars) :type node-variable-list :read-only t)
   (body (util:required 'body) :type node-body          :read-only t))
 
-;; TODO: handle recursive construction here
 (defstruct (node-let-binding
             (:copier nil))
   (name   (util:required 'name)   :type node-variable :read-only t)
@@ -864,7 +863,6 @@
     ;; Macros
     ;;
 
-    ;; TODO: Catch and rethrow macro errors with source info
     ((and (cst:atom (cst:first form))
           (symbolp (cst:raw (cst:first form)))
           (macro-function (cst:raw (cst:first form))))
