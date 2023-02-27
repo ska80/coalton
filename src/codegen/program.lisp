@@ -65,6 +65,10 @@
 
         (values
          `(progn
+            ;; Muffle redefinition warnings in SBCL. A corresponding
+            ;; SB-EXT:UNMUFFLE-CONDITIONS appears at the bottom.
+            #+sbcl (declaim (sb-ext:muffle-conditions sb-kernel:redefinition-warning))
+
             ,@(when (tc:translation-unit-types translation-unit)
                 (list
                  `(eval-when (:compile-toplevel :load-toplevel :execute)
@@ -95,6 +99,8 @@
             ,@(when (eq sb-ext:*block-compile-default* :specified)
                 (list
                  `(declaim (sb-ext:end-block))))
+
+            #+sbcl (declaim (sb-ext:unmuffle-conditions sb-kernel:redefinition-warning))
 
             (values))
          env)))))
