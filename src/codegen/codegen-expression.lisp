@@ -144,8 +144,15 @@
                           (t
                            `(let ,bindings
                               ,expr))))))
-           (t
-            (error "Pattern match not exaustive error"))))))
+
+           ;; Only emit a fallback if there is not a catch-all clause.
+           ,@(unless (member-if (lambda (pat)
+                                  (or (pattern-wildcard-p pat)
+                                      (pattern-var-p pat)))
+                                (node-match-branches expr)
+                                :key #'match-branch-pattern)
+               `((t
+                  (error "Pattern match not exaustive error"))))))))
 
   (:method ((expr node-seq) current-function env)
     (declare (type tc:environment env)
