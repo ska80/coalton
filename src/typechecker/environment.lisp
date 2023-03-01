@@ -788,6 +788,11 @@
   (declare (type environment env)
            (type symbol symbol)
            (type ty-scheme value))
+
+  ;; Schemes stored in the environment are not allowed to have any free variables.
+  (when (type-variables value)
+    (util:coalton-bug "Unable to add type with free variables to environment ~A" value))
+
   (update-environment
    env
    :value-environment (immutable-map-set
