@@ -368,7 +368,6 @@
 (defpackage #:coalton-impl/parser/read
   (:use))
 
-;; TODO: Replace EOF error with coalton error boi
 (defun read-program (stream file &key (mode (error "you must supply this bozo!")))
   "Read a PROGRAM from the COALTON-FILE."
   (declare (type coalton-file file)
@@ -390,12 +389,19 @@
       (setf *package* (find-package "COALTON-IMPL/PARSER/READ"))
 
       ;; Read the (package) form
-      (let ((package-form (eclector.concrete-syntax-tree:read stream nil 'eof)))
+      (multiple-value-bind (form presentp)
+          (util:maybe-read-form stream eclector.concrete-syntax-tree::*cst-client*)
 
-        (when (eq package-form 'eof)
-          (error "unexpected end of file"))
+        (unless presentp
+          (error 'parse-error
+               :err (coalton-error
+                     :span (cons (- (file-position stream) 2)
+                                 (- (file-position stream) 1))
+                     :file file
+                     :message "Unexpected EOF"
+                     :primary-note "missing package form")))
 
-        (setf *package* (parse-package package-form file))))
+        (setf *package* (parse-package form file))))
 
     ;; imma parsin mah program
     (let* ((program (make-program
@@ -410,45 +416,26 @@
 
            (attributes (make-array 0 :adjustable t :fill-pointer t)))
 
-      (loop :named parse-loop
-            :with elem := nil
+      (loop :do
+        (multiple-value-bind (form presentp eofp)
+            (util:maybe-read-form stream eclector.concrete-syntax-tree::*cst-client*)
 
-            ;; Escape on close paren when inside toplevel macro
-            ;; mode. This is the close paren telling us to stop
-            ;; reading.
-            :when (and (eq :toplevel-macro mode)
-                       (eql #\) (peek-char t stream)))
-              :do (read-char stream)
-                  (return-from parse-loop)
+          (when (and eofp (eq :toplevel-macro mode))
+            (error 'parse-error
+               :err (coalton-error
+                     :span (cons (- (file-position stream) 2)
+                                 (- (file-position stream) 1))
+                     :file file
+                     :message "Unexpected EOF"
+                     :primary-note "missing close parenthesis")))
 
+          (unless presentp
+            (return))
 
-            :do (setf elem
-                      (eclector.reader:call-as-top-level-read
-                       eclector.concrete-syntax-tree::*cst-client*
-                       (lambda ()
-                         (multiple-value-call
-                             (lambda (value what &optional parse-result)
-                               (if (eq :object what)
-                                   (values parse-result value)
-                                   (values value what)))
-                           (eclector.reader:read-maybe-nothing
-                            eclector.concrete-syntax-tree::*cst-client*
-                            stream
-                            nil 'eof)))
-                       stream
-                       nil 'eof
-                       nil))
-
-            :when (eq elem 'eof)
-              :do (if (eq :toplevel-macro mode)
-                      (error "unexpected EOF")
-                      (return-from parse-loop))
-
-            :do (when (and elem
-                           (parse-toplevel-form elem program attributes file)
-                           (plusp (length attributes)))
-                  (util:coalton-bug "parse-toplevel-form indicated that a form was parsed but did not
-consume all attributes")))
+          (when (and (parse-toplevel-form form program attributes file)
+                     (plusp (length attributes)))
+            (util:coalton-bug "parse-toplevel-form indicated that a form was parsed but did not
+consume all attributes"))))
 
       (unless (zerop (length attributes))
         (error 'parse-error
@@ -473,42 +460,33 @@ consume all attributes")))
 
          ;; Read unspecified floats as double floats
          (*read-default-float-format* 'double-float))
-    (let* ((forms
-             (loop :named parse-loop
-                   :with forms := nil
-                   :with elem := nil
 
-                   :when (eql #\) (peek-char t stream))
-                     :do (read-char stream)
-                         (return-from parse-loop (nreverse forms))
+    ;; Read the coalton form
+    (multiple-value-bind (form presentp)
+        (util:maybe-read-form stream eclector.concrete-syntax-tree::*cst-client*)
 
-                   :do (setf elem
-                             (eclector.reader:call-as-top-level-read
-                              eclector.concrete-syntax-tree::*cst-client*
-                              (lambda ()
-                                (multiple-value-call
-                                    (lambda (value what &optional parse-result)
-                                      (if (eq :object what)
-                                          (values parse-result value)
-                                          (values value what)))
-                                  (eclector.reader:read-maybe-nothing
-                                   eclector.concrete-syntax-tree::*cst-client*
-                                   stream
-                                   nil 'eof)))
-                              stream
-                              nil 'eof
-                              nil))
+      (unless presentp
+        (error 'parse-error
+               :err (coalton-error
+                     :span (cons (- (file-position stream) 2)
+                                 (- (file-position stream) 1))
+                     :file file
+                     :message "Malformed coalton expression"
+                     :primary-note "missing expression")))
 
-                   :when (eq elem 'eof)
-                     :do (error "unexpected EOF")
+      ;; Ensure there is only one form
+      (multiple-value-bind (form presentp)
+          (util:maybe-read-form stream eclector.concrete-syntax-tree::*cst-client*)
 
-                   :when elem
-                     :do (push elem forms)))
-           (form (cst:cstify forms :source (cons (car (cst:source (first forms)))
-                                                 (cdr (cst:source (car (last forms))))))))
+        (when presentp
+          (error 'parse-error
+                 :err (coalton-error
+                       :span (cst:source form)
+                       :file file
+                       :message "Malformed coalton expression"
+                       :primary-note "unexpected form"))))
 
-      ;; TODO: @cole wtf?
-      (parse-expression (cst:first form) file))))
+      (parse-expression form file))))
 
 (defun parse-package (form file)
   "Parses a coalton package decleration in the form of (package {name})"
