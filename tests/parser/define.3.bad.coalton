@@ -1,4 +1,6 @@
-;; BAD: Invalid nullary function
+;; BAD: Parse Define
 (package test-package)
 
-(define (f) (+ x 2))
+(monomorphize)
+(monomorphize)
+(define f x)

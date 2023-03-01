@@ -367,7 +367,7 @@
 (defstruct (node-return
             (:include node)
             (:copier nil))
-  (expr (util:required 'expr) :type node :read-only t))
+  (expr (util:required 'expr) :type (or null node) :read-only t))
 
 (defstruct (node-application
             (:include node)
