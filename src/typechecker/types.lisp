@@ -482,7 +482,7 @@ This requires a valid PPRINT-VARIABLE-CONTEXT")
 ;;; Conditions
 ;;;
 
-(define-condition type-application-error (error:coalton-type-error)
+(define-condition type-application-error (error:coalton-internal-type-error)
   ((type :initarg :type
          :reader type-application-error-type)
    (argument :initarg :argument

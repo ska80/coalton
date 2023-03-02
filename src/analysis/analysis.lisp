@@ -11,6 +11,12 @@
 
 (in-package #:coalton-impl/analysis/analysis)
 
+(define-condition non-exhaustive-match-warning (error:coalton-base-warning)
+  ())
+
+(define-condition useless-pattern-warning (error:coalton-base-warning)
+  ())
+
 (defun analyze-translation-unit (translation-unit env file)
   "Perform analysis passes on TRANSLATION-UNIT, potentially producing errors or warnings."
   (declare (type tc:translation-unit translation-unit)
@@ -31,7 +37,7 @@
                                  :file file
                                  :span (tc:node-source node)
                                  :message "Non-exhaustive match"
-                                 :primary-note "Non-exaustive match"
+                                 :primary-note "non-exaustive match"
                                  :notes (when (first exhaustive-or-missing)
                                           (list
                                            (error:make-coalton-error-note
@@ -47,7 +53,7 @@
                                        :file file
                                        :span (tc:pattern-source pattern)
                                        :message "Useless match case"
-                                       :primary-note "Useless match case"
+                                       :primary-note "useless match case"
                                        :notes (list (error:make-coalton-error-note
                                                      :type :secondary
                                                      :span (tc:node-source node)

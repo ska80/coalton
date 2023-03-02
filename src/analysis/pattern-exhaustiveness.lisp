@@ -21,22 +21,6 @@
 ;;; Maranget 2007, http://moscova.inria.fr/~maranget/papers/warn/index.html
 ;;;
 
-(define-condition non-exhaustive-match-warning (style-warning)
-  ((err :reader non-exhaustive-match-warning-err
-        :initarg :err
-        :type function))
-  (:report (lambda (c s)
-             (let ((*print-circle*))
-               (error:display-coalton-error s (funcall (non-exhaustive-match-warning-err c)))))))
-
-(define-condition useless-pattern-warning (style-warning)
-  ((err :reader useless-pattern-warning-err
-        :initarg :err
-        :type function))
-  (:report (lambda (c s)
-             (let ((*print-circle*))
-               (error:display-coalton-error s (funcall (useless-pattern-warning-err c)))))))
-
 
 (defun exhaustive-patterns-p (patterns env)
   "Are PATTERNS exhaustive?"

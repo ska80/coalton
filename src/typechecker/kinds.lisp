@@ -307,7 +307,7 @@
 ;;; Conditions
 ;;;
 
-(define-condition kunify-error (error:coalton-type-error)
+(define-condition kunify-error (error:coalton-internal-type-error)
   ((kind1 :initarg :kind1
           :reader kunify-errror-kind1
           :type kind)

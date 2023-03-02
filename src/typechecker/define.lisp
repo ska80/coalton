@@ -251,7 +251,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
                 :source (parser:node-source node)
                 :value (parser:node-literal-value node))
                subs)))
-        (error:coalton-type-error ()
+        (error:coalton-internal-type-error ()
           (error 'tc-error
                  :err (coalton-error
                        :span (parser:node-source node)
@@ -288,7 +288,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
                 :source (parser:node-source node)
                 :value (parser:node-integer-literal-value node))
                subs)))
-        (error:coalton-type-error ()
+        (error:coalton-internal-type-error ()
           (error 'tc-error
                  :err (coalton-error
                        :span (parser:node-source node)
@@ -322,7 +322,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
                 :source (parser:node-source node)
                 :name (parser:node-variable-name node))
                subs)))
-        (error:coalton-type-error ()
+        (error:coalton-internal-type-error ()
           (error 'tc-error
                  :err (coalton-error
                        :span (parser:node-source node)
@@ -424,7 +424,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
                   :rator rator-node
                   :rands rand-nodes)
                  subs)))
-          (error:coalton-type-error ()
+          (error:coalton-internal-type-error ()
             (error 'tc-error
                    :err (coalton-error
                          :span (parser:node-source node)
@@ -546,7 +546,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
               :for (s2 . ty2) :in (cdr returns)
               :do (handler-case
                       (setf subs (tc:unify subs ty1 ty2))
-                    (error:coalton-type-error ()
+                    (error:coalton-internal-type-error ()
                       (error 'tc-error
                              :err (coalton-error
                                    :span s1
@@ -566,7 +566,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
         (when *returns*
           (handler-case
               (setf subs (tc:unify subs (cdr (first *returns*)) body-ty))
-            (error:coalton-type-error ()
+            (error:coalton-internal-type-error ()
               (error 'tc-error
                      :err (coalton-error
                            :span (car (first *returns*))
@@ -610,7 +610,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
                     :vars var-nodes
                     :body body-node)
                    subs)))
-            (error:coalton-type-error ()
+            (error:coalton-internal-type-error ()
               (error 'tc-error
                      :err (coalton-error
                            :span (parser:node-source node)
@@ -697,7 +697,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
                 :var-names (parser:node-lisp-var-names node)
                 :body (parser:node-lisp-body node))
                subs)))
-        (error:coalton-type-error ()
+        (error:coalton-internal-type-error ()
           (error 'tc-error
                  :err (coalton-error
                        :span (parser:node-source node)
@@ -767,7 +767,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
                   :expr expr-node
                   :branches branch-nodes)
                  subs)))
-          (error:coalton-type-error ()
+          (error:coalton-internal-type-error ()
             (error 'tc-error
                    :err (coalton-error
                          :span (parser:node-source node)
@@ -821,7 +821,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
         ;; Check that declared-ty and expr-ty unify
         (handler-case
             (setf subs (tc:unify subs declared-ty expr-ty))
-          (error:coalton-type-error ()
+          (error:coalton-internal-type-error ()
             (error 'tc-error
                    :err (coalton-error
                          :span (parser:node-source node)
@@ -834,7 +834,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
         ;; Check that declared-ty is not more specific than expr-ty
         (handler-case
             (tc:match expr-ty declared-ty)
-          (error:coalton-type-error ()
+          (error:coalton-internal-type-error ()
             (error 'tc-error
                    :err (coalton-error
                          :span (parser:node-source node)
@@ -857,7 +857,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
                preds
                expr-node
                subs))
-          (error:coalton-type-error ()
+          (error:coalton-internal-type-error ()
             (error 'tc-error
                    :err (coalton-error
                          :span (parser:node-source node)
@@ -939,7 +939,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
               :source (parser:node-source node)
               :nodes body-nodes)
              subs))
-        (error:coalton-type-error ()
+        (error:coalton-internal-type-error ()
           (error 'tc-error
                  :err (coalton-error
                        :span (parser:node-source node)
@@ -982,7 +982,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
               :source (parser:node-source node)
               :nodes body-nodes)
              subs))
-        (error:coalton-type-error ()
+        (error:coalton-internal-type-error ()
           (error 'tc-error
                  :err (coalton-error
                        :span (parser:node-source node)
@@ -1036,7 +1036,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
                   :then then-node
                   :else else-node)
                  subs))
-            (error:coalton-type-error ()
+            (error:coalton-internal-type-error ()
               (error 'tc-error
                      :err (coalton-error
                            :span (parser:node-source node)
@@ -1081,7 +1081,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
                 :expr expr-node
                 :body body-node)
                subs))
-          (error:coalton-type-error ()
+          (error:coalton-internal-type-error ()
             (error 'tc-error
                    :err (coalton-error
                          :span (parser:node-source node)
@@ -1126,7 +1126,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
                 :expr expr-node
                 :body body-node)
                subs))
-          (error:coalton-type-error ()
+          (error:coalton-internal-type-error ()
             (error 'tc-error
                    :err (coalton-error
                          :span (parser:node-source node)
@@ -1205,7 +1205,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
                 :source (parser:node-source node)
                 :clauses clause-nodes)
                subs)))
-        (error:coalton-type-error ()
+        (error:coalton-internal-type-error ()
           (error 'tc-error
                  :err (coalton-error
                        :span (parser:node-source node)
@@ -1248,7 +1248,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
                 :expr expr-node
                 :source (parser:node-do-bind-source node))
                subs))
-          (error:coalton-type-error ()
+          (error:coalton-internal-type-error ()
             (error 'tc-error
                    :err (coalton-error
                          :span (parser:node-do-bind-source node)
@@ -1352,7 +1352,7 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
                 :nodes nodes
                 :last-node last-node) 
                subs))
-          (error:coalton-type-error ()
+          (error:coalton-internal-type-error ()
             (error 'tc-error
                    :err (coalton-error
                          :span (parser:node-source node)
@@ -1417,7 +1417,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
                 :source (parser:pattern-source pat)
                 :value (parser:pattern-literal-value pat))
                subs)))
-        (error:coalton-type-error ()
+        (error:coalton-internal-type-error ()
           (error 'tc-error
                  :err (coalton-error
                        :span (parser:pattern-source pat)
@@ -1518,7 +1518,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
                     :name (parser:pattern-constructor-name pat)
                     :patterns pattern-nodes)
                    subs)))
-            (error:coalton-type-error ()
+            (error:coalton-internal-type-error ()
               (error 'tc-error
                      :err (coalton-error
                            :span (parser:pattern-source pat)
@@ -1760,7 +1760,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
                         (append env-tvars local-tvars)
                         retained-preds)
 
-                     (error:coalton-type-error (e)
+                     (error:coalton-internal-type-error (e)
                        (error-ambigious-pred (tc:ambigious-constraint-pred e) file))))
 
                  ;; Defaultable predicates are not retained
@@ -1860,7 +1860,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
 
         (let* ((defaultable-preds (handler-case
                                       (tc:default-preds (tc-env-env env) (append env-tvars local-tvars) retained-preds)
-                                    (error:coalton-type-error (e)
+                                    (error:coalton-internal-type-error (e)
                                       (error-ambigious-pred (tc:ambigious-constraint-pred e) file))))
 
                (retained-preds (set-difference retained-preds defaultable-preds :test #'eq))
@@ -2014,7 +2014,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
                          :for (s2 . ty2) :in (cdr returns)
                          :do (handler-case
                                  (setf subs (tc:unify subs ty1 ty2))
-                               (error:coalton-type-error ()
+                               (error:coalton-internal-type-error ()
                                  (error 'tc-error
                                         :err (coalton-error
                                               :span s1
@@ -2034,7 +2034,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
                    (when *returns*
                      (handler-case
                          (setf subs (tc:unify subs (cdr (first *returns*)) ret-ty))
-                       (error:coalton-type-error ()
+                       (error:coalton-internal-type-error ()
                          (error 'tc-error
                                 :err (coalton-error
                                       :span (car (first *returns*))
@@ -2091,7 +2091,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
                preds
                typed-binding
                subs)))
-        (error:coalton-type-error ()
+        (error:coalton-internal-type-error ()
           (error 'tc-error
                  :err (coalton-error
                        :span (parser:source binding)

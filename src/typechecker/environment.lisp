@@ -34,7 +34,8 @@
    #:fundep-list
    #:+fundep-max-depth+)
   (:local-nicknames
-   (#:util #:coalton-impl/util))
+   (#:util #:coalton-impl/util)
+   (#:error #:coalton-impl/error))
   (:export
    #:*env-update-log*                       ; VARIABLE
    #:value-environment                      ; STRUCT
@@ -1151,7 +1152,7 @@
         (progn
           (match (specialization-entry-to-ty elem) ty)
           (return-from lookup-specialization-by-type elem))
-      (coalton-type-error (e)
+      (error:coalton-internal-type-error (e)
         (declare (ignore e))))))
 
 (defun lookup-fundep-environment (env class &key (no-error nil))

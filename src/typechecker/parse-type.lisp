@@ -189,7 +189,7 @@
           (progn
             (setf ksubs (tc:kunify kvar expected-kind ksubs))
             (values (tc:apply-ksubstitution ksubs tvar) ksubs))
-        (error:coalton-type-error ()
+        (error:coalton-internal-type-error ()
           (error 'tc-error
                  :err (coalton-error
                        :span (parser:ty-source type)
@@ -211,7 +211,7 @@
           (progn
             (setf ksubs (tc:kunify (tc:kind-of type_) expected-kind ksubs))
             (values (tc:apply-ksubstitution ksubs type_) ksubs))
-        (error:coalton-type-error ()
+        (error:coalton-internal-type-error ()
           (error 'tc-error
                  :err (coalton-error
                        :span (parser:ty-source type)
@@ -251,7 +251,7 @@
                 (values
                  (tc:apply-type-argument fun-ty arg-ty :ksubs ksubs)
                  ksubs))
-            (error:coalton-type-error ()
+            (error:coalton-internal-type-error ()
               (error 'tc-error
                      :err (coalton-error
                            :span (parser:ty-source (parser:tapp-from type))

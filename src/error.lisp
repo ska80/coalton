@@ -3,11 +3,14 @@
   (:local-nicknames
    (#:util #:coalton-impl/util))
   (:export
+   #:coalton-internal-condition         ; CONDITION
    #:coalton-base-error                 ; CONDITION
-   #:coalton-warning                    ; CONDITION
-   #:coalton-style-warning              ; CONDITION
-   #:with-context                       ; MACRO
-   #:coalton-type-error                 ; CONDITION
+   #:coalton-error-err                  ; ACCESSOR
+   #:coalton-base-warning               ; CONDITION
+   #:coalton-warning-err                ; ACCESSOR
+   #:render-coalton-error               ; FUNCTION
+   #:render-coalton-warning             ; FUNCTION
+   #:coalton-internal-type-error        ; CONDITION
    #:coalton-file                       ; TYPE
    #:coalton-file-stream                ; ACCESSOR
    #:coalton-file-name                  ; ACCESSOR
@@ -24,45 +27,64 @@
 
 (in-package #:coalton-impl/error)
 
-;;;
-;;; Legacy error stack
-;;;
+
+;; TODO: We should have some report :around to print the internal condition too.
+(define-condition coalton-internal-condition (error)
+  ()
+  (:documentation "An internal Coalton condition for use in signaling. Internal conditions should always be caught.")
+  (:report (lambda (c s)
+             (declare (ignore c))
+             (format s "Unhandled internal condition.~%~%If you are seeing this, please file an issue on Github."))))
 
 (define-condition coalton-base-error (error)
-  ()
-  (:documentation "Supertype for Coalton errors"))
+  ((err :accessor coalton-error-err
+        :initarg :err
+        :type function)
+   (text :accessor coalton-error-text
+         :initarg :text
+         :type string))
+  (:documentation "The base type for user-facing errors. Only ERR needs to be specified, and TEXT will be filled when RENDER-COALTON-ERROR is called.")
+  (:report (lambda (c s)
+             (if (coalton-error-text c)
+                 (write-string (coalton-error-text c) s)
+                 (display-coalton-error s (funcall (coalton-error-err c)))))))
 
-(define-condition coalton-type-error (coalton-base-error)
-  ()
-  (:documentation "Supertype for Coalton type errors"))
+(define-condition coalton-base-warning (style-warning)
+  ((err :accessor coalton-warning-err
+        :initarg :err
+        :type function)
+   (text :accessor coalton-warning-text
+         :initarg :text
+         :type string))
+    (:documentation "The base type for user-facing warnings. Only ERR needs to be specified, and TEXT will be filled when RENDER-COALTON-WARNING is called.")
+    (:report (lambda (c s)
+             (if (coalton-warning-text c)
+                 (write-string (coalton-warning-text c) s)
+                 (display-coalton-error s (funcall (coalton-warning-err c)))))))
 
-(define-condition coalton-warning (warning)
-  ()
-  (:documentation "Supertype for Coalton warnings"))
+(defun render-coalton-error (e)
+  "Render the error object within a COALTON-BASE-ERROR to text, removing the need to keep source file handles open."
+  (declare (type coalton-base-error e))
+  (setf (coalton-error-text e)
+        (with-output-to-string (s)
+          (display-coalton-error s (funcall (coalton-error-err e)))
+          s)
+        (coalton-error-err e)
+        nil))
 
-(define-condition coalton-style-warning (style-warning)
-  ()
-  (:documentation "Supertype for Coalton style warnings"))
+(defun render-coalton-warning (w)
+  "Render the error object within a COALTON-BASE-ERROR to text, removing the need to keep source file handles open."
+  (declare (type coalton-base-warning w))
+  (setf (coalton-warning-text w)
+        (with-output-to-string (s)
+          (display-coalton-error s (funcall (coalton-warning-err w)))
+          s)
+        (coalton-warning-err w)
+        nil))
 
-(defvar *error-context-stack* '()
-  "The stack of context frames for the current operation")
 
-(defmethod print-object :after ((er coalton-base-error) stream)
-  (dolist (ctx *error-context-stack*)
-    (format stream "~%In ~A" ctx)))
-
-(defmethod print-object :after ((er coalton-warning) stream)
-  (dolist (ctx *error-context-stack*)
-    (format stream "~%In ~A" ctx)))
-
-(defmethod print-object :after ((er coalton-style-warning) stream)
-  (dolist (ctx *error-context-stack*)
-    (format stream "~%In ~A" ctx)))
-
-(defmacro with-context ((context &rest args) &body body)
-  `(let ((*error-context-stack* (cons (format nil ,context ,@args) *error-context-stack*)))
-     (progn ,@body)))
-
+(define-condition coalton-internal-type-error (coalton-internal-condition)
+  ())
 
 ;;;
 ;;; Error Rendering
@@ -187,287 +209,292 @@ NOTES and HELP-NOTES may optionally be supplied notes and help messages."
   (declare (type stream stream)
            (type coalton-error error))
 
-  (let ((file-stream (coalton-file-stream (coalton-error-file error))))
+  (let ((file-stream (coalton-file-stream (coalton-error-file error)))
 
-    ;; Print the error message and location
-    (multiple-value-bind (line-number line-start-index)
-        (get-line-from-index file-stream (coalton-error-location error))
-      (format stream
-              "~(~A~): ~A~%  --> ~A:~D:~D~%"
-              (coalton-error-type error)
-              (coalton-error-message error)
-              (coalton-file-name (coalton-error-file error))
-              line-number
-              (- (coalton-error-location error) line-start-index)))
+        (*print-circle* nil))
 
-    ;; Print the error notes
-    (let* (;; We need to keep track of the current depth of multiline
-           ;; notes so that we can pad the left with the correct
-           ;; number of columns.
-           (multiline-note-stack nil)
-           (multiline-note-current-depth 0)
-           (multiline-note-max-depth 0)
+    ;; TODO: We need some way of hooking into the typechecker here :/
+    (progn ;tc:with-pprint-variable-context ()
 
-           ;; Sort notes by start of span
-           (sorted-notes
-             (stable-sort
-              (coalton-error-notes error)
-              #'<
-              :key (lambda (note)
-                     (car (coalton-error-note-span note)))))
+      ;; Print the error message and location
+      (multiple-value-bind (line-number line-start-index)
+          (get-line-from-index file-stream (coalton-error-location error))
+        (format stream
+                "~(~A~): ~A~%  --> ~A:~D:~D~%"
+                (coalton-error-type error)
+                (coalton-error-message error)
+                (coalton-file-name (coalton-error-file error))
+                line-number
+                (- (coalton-error-location error) line-start-index)))
 
-           ;; Attach line info to notes and figure out the maximum
-           ;; multiline note depth we will need.
-           (resolved-notes
-             (mapcar
-              (lambda (note)
-                (let ((start (car (coalton-error-note-span note)))
-                      (end (cdr (coalton-error-note-span note))))
-                  ;; Get line info for the start of the span
-                  (multiple-value-bind (start-line start-line-start)
-                      (get-line-from-index file-stream start)
+      ;; Print the error notes
+      (let* (;; We need to keep track of the current depth of multiline
+             ;; notes so that we can pad the left with the correct
+             ;; number of columns.
+             (multiline-note-stack nil)
+             (multiline-note-current-depth 0)
+             (multiline-note-max-depth 0)
 
-                    ;; Get line info for the end of the span
-                    (multiple-value-bind (end-line end-line-start)
-                        (get-line-from-index file-stream (1- end))
+             ;; Sort notes by start of span
+             (sorted-notes
+               (stable-sort
+                (coalton-error-notes error)
+                #'<
+                :key (lambda (note)
+                       (car (coalton-error-note-span note)))))
 
-                      ;; Compute column numbers
-                      (let ((start-column (- start start-line-start))
-                            (end-column   (- end end-line-start)))
+             ;; Attach line info to notes and figure out the maximum
+             ;; multiline note depth we will need.
+             (resolved-notes
+               (mapcar
+                (lambda (note)
+                  (let ((start (car (coalton-error-note-span note)))
+                        (end (cdr (coalton-error-note-span note))))
+                    ;; Get line info for the start of the span
+                    (multiple-value-bind (start-line start-line-start)
+                        (get-line-from-index file-stream start)
 
-                        ;; Ensure that spans are valid
-                        (when (or (< end-line start-line)
-                                  (and (= end-line start-line)
-                                       (< end-column start-column)))
-                          (util:coalton-bug "Error note contains invalid span ~A:~A to ~A:~A"
-                                            start-line start-column end-line end-column))
+                      ;; Get line info for the end of the span
+                      (multiple-value-bind (end-line end-line-start)
+                          (get-line-from-index file-stream (1- end))
 
-                        ;; Clear any multiline notes in the stack that we have now passed.
-                        (loop :while (and (car multiline-note-stack)
-                                          (> start-line
-                                             (coalton-error-resolved-note-end-line
-                                              (car multiline-note-stack))))
-                              :do (pop multiline-note-stack)
-                                  (decf multiline-note-current-depth))
+                        ;; Compute column numbers
+                        (let ((start-column (- start start-line-start))
+                              (end-column   (- end end-line-start)))
 
-                        (let ((resolved-note (make-coalton-error-resolved-note
-                                              :type (coalton-error-note-type note)
-                                              :start-line start-line
-                                              :start-column start-column
-                                              :end-line end-line
-                                              :end-column end-column
-                                              :message (coalton-error-note-message note))))
+                          ;; Ensure that spans are valid
+                          (when (or (< end-line start-line)
+                                    (and (= end-line start-line)
+                                         (< end-column start-column)))
+                            (util:coalton-bug "Error note contains invalid span ~A:~A to ~A:~A"
+                                              start-line start-column end-line end-column))
 
-                          ;; If this is a multiline note then keep track of the current depth.
-                          (when (/= end-line start-line)
-                            (push resolved-note multiline-note-stack)
-                            (incf multiline-note-current-depth)
+                          ;; Clear any multiline notes in the stack that we have now passed.
+                          (loop :while (and (car multiline-note-stack)
+                                            (> start-line
+                                               (coalton-error-resolved-note-end-line
+                                                (car multiline-note-stack))))
+                                :do (pop multiline-note-stack)
+                                    (decf multiline-note-current-depth))
 
-                            (if (> multiline-note-current-depth
-                                   multiline-note-max-depth)
-                                (setf multiline-note-max-depth
-                                      multiline-note-current-depth)))
+                          (let ((resolved-note (make-coalton-error-resolved-note
+                                                :type (coalton-error-note-type note)
+                                                :start-line start-line
+                                                :start-column start-column
+                                                :end-line end-line
+                                                :end-column end-column
+                                                :message (coalton-error-note-message note))))
 
-                          resolved-note))))))
-              sorted-notes))
+                            ;; If this is a multiline note then keep track of the current depth.
+                            (when (/= end-line start-line)
+                              (push resolved-note multiline-note-stack)
+                              (incf multiline-note-current-depth)
 
-           ;; Get the character width of the last line mentioned.
-           (first-line (coalton-error-resolved-note-start-line (car resolved-notes)))
-           (last-line (reduce #'max resolved-notes :key #'coalton-error-resolved-note-end-line))
-           (line-number-width
-             (1+ (floor (log last-line 10)))))
+                              (if (> multiline-note-current-depth
+                                     multiline-note-max-depth)
+                                  (setf multiline-note-max-depth
+                                        multiline-note-current-depth)))
 
-      ;; Ensure the multiline stack is empty so we can reuse it when printing notes.
-      (setf multiline-note-stack nil
-            multiline-note-current-depth 0)
+                            resolved-note))))))
+                sorted-notes))
 
-      ;; Print first empty line.
-      (format stream
-              " ~v{~C~:*~} |~%"
-              line-number-width
-              '(#\Space))
+             ;; Get the character width of the last line mentioned.
+             (first-line (coalton-error-resolved-note-start-line (car resolved-notes)))
+             (last-line (reduce #'max resolved-notes :key #'coalton-error-resolved-note-end-line))
+             (line-number-width
+               (1+ (floor (log last-line 10)))))
 
-      (let (;; Keep track of which lines we have output.  We start at
-            ;; one line before the beginning to ensure the first line
-            ;; is printed correctly.
-            (current-line (1- first-line)))
-        (labels ((print-line-number (line-number show-line-number)
-                   (format stream
-                           " ~:[~vA~*~*~;~*~*~v{~C~:*~}~] | ~{~:[ ~;|~]~}"
-                           (not show-line-number)
-                           line-number-width
-                           line-number
-                           line-number-width
-                           '(#\Space)
-                           (mapcar
-                            (lambda (note)
-                              (>= (coalton-error-resolved-note-end-line note)
-                                  line-number))
-                            multiline-note-stack)))
+        ;; Ensure the multiline stack is empty so we can reuse it when printing notes.
+        (setf multiline-note-stack nil
+              multiline-note-current-depth 0)
 
-                 (print-line-contents (line-number)
-                   (print-line-number line-number t)
-                   (format stream " ~v@{ ~}~A~%"
-                           (- multiline-note-max-depth
-                              multiline-note-current-depth)
-                           (get-nth-line file-stream line-number)))
+        ;; Print first empty line.
+        (format stream
+                " ~v{~C~:*~} |~%"
+                line-number-width
+                '(#\Space))
 
-                 (note-highlight-char (note)
-                   (ecase (coalton-error-resolved-note-type note)
-                     (:primary #\^)
-                     (:secondary #\-)))
+        (let (;; Keep track of which lines we have output.  We start at
+              ;; one line before the beginning to ensure the first line
+              ;; is printed correctly.
+              (current-line (1- first-line)))
+          (labels ((print-line-number (line-number show-line-number)
+                     (format stream
+                             " ~:[~vA~*~*~;~*~*~v{~C~:*~}~] | ~{~:[ ~;|~]~}"
+                             (not show-line-number)
+                             line-number-width
+                             line-number
+                             line-number-width
+                             '(#\Space)
+                             (mapcar
+                              (lambda (note)
+                                (>= (coalton-error-resolved-note-end-line note)
+                                    line-number))
+                              multiline-note-stack)))
 
-                 (print-singleline-note (note)
-                   (print-line-number (coalton-error-resolved-note-start-line note) nil)
-                   (format stream
-                           " ~v{~C~:*~}~v{~C~:*~} ~A~%"
-                           (+ (coalton-error-resolved-note-start-column note)
-                              (- multiline-note-max-depth
-                                 multiline-note-current-depth))
-                           '(#\Space)
-                           (- (coalton-error-resolved-note-end-column note)
-                              (coalton-error-resolved-note-start-column note))
-                           (list (note-highlight-char note))
-                           (coalton-error-resolved-note-message note)))
+                   (print-line-contents (line-number)
+                     (print-line-number line-number t)
+                     (format stream " ~v@{ ~}~A~%"
+                             (- multiline-note-max-depth
+                                multiline-note-current-depth)
+                             (get-nth-line file-stream line-number)))
 
-                 (print-multiline-note-start (note)
-                   (print-line-number (coalton-error-resolved-note-start-line note) nil)
-                   (format stream " ~v{~C~:*~}~C~%"
-                           (+ (coalton-error-resolved-note-start-column note)
-                              (- multiline-note-max-depth
-                                 multiline-note-current-depth))
-                           '(#\_)
-                           (note-highlight-char note)))
+                   (note-highlight-char (note)
+                     (ecase (coalton-error-resolved-note-type note)
+                       (:primary #\^)
+                       (:secondary #\-)))
 
-                 (print-multiline-note-end (note)
-                   (print-line-number (coalton-error-resolved-note-start-line note) nil)
-                   (format stream
-                           "~v{~C~:*~}~C ~A~%"
-                           (+ (coalton-error-resolved-note-end-column note)
-                              (- multiline-note-max-depth
-                                 multiline-note-current-depth))
-                           '(#\_)
-                           (note-highlight-char note)
-                           (coalton-error-resolved-note-message note)))
+                   (print-singleline-note (note)
+                     (print-line-number (coalton-error-resolved-note-start-line note) nil)
+                     (format stream
+                             " ~v{~C~:*~}~v{~C~:*~} ~A~%"
+                             (+ (coalton-error-resolved-note-start-column note)
+                                (- multiline-note-max-depth
+                                   multiline-note-current-depth))
+                             '(#\Space)
+                             (- (coalton-error-resolved-note-end-column note)
+                                (coalton-error-resolved-note-start-column note))
+                             (list (note-highlight-char note))
+                             (coalton-error-resolved-note-message note)))
 
-                 (print-finished-multiline-notes-for-line (line-number)
-                   ;; Check if there are any multiline notes that need to be printed
-                   (loop :for stack-head := multiline-note-stack :then (cdr stack-head)
-                         :for note := (car stack-head)
+                   (print-multiline-note-start (note)
+                     (print-line-number (coalton-error-resolved-note-start-line note) nil)
+                     (format stream " ~v{~C~:*~}~C~%"
+                             (+ (coalton-error-resolved-note-start-column note)
+                                (- multiline-note-max-depth
+                                   multiline-note-current-depth))
+                             '(#\_)
+                             (note-highlight-char note)))
 
-                         :when (null stack-head)
-                           :do (return)
+                   (print-multiline-note-end (note)
+                     (print-line-number (coalton-error-resolved-note-start-line note) nil)
+                     (format stream
+                             "~v{~C~:*~}~C ~A~%"
+                             (+ (coalton-error-resolved-note-end-column note)
+                                (- multiline-note-max-depth
+                                   multiline-note-current-depth))
+                             '(#\_)
+                             (note-highlight-char note)
+                             (coalton-error-resolved-note-message note)))
 
-                         :when (= line-number (coalton-error-resolved-note-end-line note))
-                           :do (print-multiline-note-end note)
+                   (print-finished-multiline-notes-for-line (line-number)
+                     ;; Check if there are any multiline notes that need to be printed
+                     (loop :for stack-head := multiline-note-stack :then (cdr stack-head)
+                           :for note := (car stack-head)
 
-                         :when (and (eq note (car multiline-note-stack))
-                                    (>= line-number (coalton-error-resolved-note-end-line note)))
-                           :do (pop multiline-note-stack)
-                               (decf multiline-note-current-depth)))
+                           :when (null stack-head)
+                             :do (return)
 
-                 (print-lines-until (line-number)
-                   (cond (;; If we are on the same line then
-                          ;; don't reprint.
-                          (= line-number current-line))
+                           :when (= line-number (coalton-error-resolved-note-end-line note))
+                             :do (print-multiline-note-end note)
 
-                         (;; If we are within 3 lines of the
-                          ;; previous one then just print those
-                          ;; lines.
-                          (>= 3 (- line-number current-line))
-                          (loop :for line :from current-line :below line-number
-                                :do (print-line-contents (1+ line))
-                                :unless (= (1+ line) line-number)
-                                  :do (print-finished-multiline-notes-for-line (1+ line))))
+                           :when (and (eq note (car multiline-note-stack))
+                                      (>= line-number (coalton-error-resolved-note-end-line note)))
+                             :do (pop multiline-note-stack)
+                                 (decf multiline-note-current-depth)))
 
-                         (;; Otherwise split the output.
-                          t
-                          (print-line-contents (1+ current-line))
+                   (print-lines-until (line-number)
+                     (cond (;; If we are on the same line then
+                            ;; don't reprint.
+                            (= line-number current-line))
 
-                          ;; Print out any intermediate multiline note endings.
-                          (loop :for note :in multiline-note-stack
-                                :when (< current-line (coalton-error-resolved-note-end-line note) line-number)
-                                  :do (print-lines-until (coalton-error-resolved-note-end-line note)))
+                           (;; If we are within 3 lines of the
+                            ;; previous one then just print those
+                            ;; lines.
+                            (>= 3 (- line-number current-line))
+                            (loop :for line :from current-line :below line-number
+                                  :do (print-line-contents (1+ line))
+                                  :unless (= (1+ line) line-number)
+                                    :do (print-finished-multiline-notes-for-line (1+ line))))
 
-                          (format stream " ...~%")
-                          (print-line-contents (1- line-number))
-                          (print-line-contents line-number)))
-                   (setf current-line line-number)))
+                           (;; Otherwise split the output.
+                            t
+                            (print-line-contents (1+ current-line))
 
-          ;; Walk down our notes, printing lines and notes as needed
-          ;; and keeping track of multiline note depth.
-          (loop :for note :in resolved-notes
-                :do (cond
-                      ;; For multiline we need to add to the current stack.
-                      ((/= (coalton-error-resolved-note-start-line note)
-                           (coalton-error-resolved-note-end-line note))
-                       ;; Print lines until this note.
-                       (print-lines-until (coalton-error-resolved-note-start-line note))
+                            ;; Print out any intermediate multiline note endings.
+                            (loop :for note :in multiline-note-stack
+                                  :when (< current-line (coalton-error-resolved-note-end-line note) line-number)
+                                    :do (print-lines-until (coalton-error-resolved-note-end-line note)))
 
-                       ;; Print out a new row with underlines connecting
-                       ;; back to the multiline position.
-                       (print-multiline-note-start note)
+                            (format stream " ...~%")
+                            (print-line-contents (1- line-number))
+                            (print-line-contents line-number)))
+                     (setf current-line line-number)))
 
-                       ;; Push this note on to the stack for safe keeping.
-                       (push note multiline-note-stack)
-                       (incf multiline-note-current-depth))
-                      ;; For non-multiline just print the note
-                      (t
-                       ;; Print lines until this note.
-                       (print-lines-until (coalton-error-resolved-note-start-line note))
+            ;; Walk down our notes, printing lines and notes as needed
+            ;; and keeping track of multiline note depth.
+            (loop :for note :in resolved-notes
+                  :do (cond
+                        ;; For multiline we need to add to the current stack.
+                        ((/= (coalton-error-resolved-note-start-line note)
+                             (coalton-error-resolved-note-end-line note))
+                         ;; Print lines until this note.
+                         (print-lines-until (coalton-error-resolved-note-start-line note))
 
-                       (print-singleline-note note)
+                         ;; Print out a new row with underlines connecting
+                         ;; back to the multiline position.
+                         (print-multiline-note-start note)
 
-                       (print-finished-multiline-notes-for-line (coalton-error-resolved-note-start-line note)))))
+                         ;; Push this note on to the stack for safe keeping.
+                         (push note multiline-note-stack)
+                         (incf multiline-note-current-depth))
+                        ;; For non-multiline just print the note
+                        (t
+                         ;; Print lines until this note.
+                         (print-lines-until (coalton-error-resolved-note-start-line note))
 
-          ;; If there are any multline notes that have not closed out then
-          ;; print them.
-          (print-lines-until last-line)
-          (print-finished-multiline-notes-for-line last-line))))
+                         (print-singleline-note note)
 
-    ;; Print help messages
-    (loop :for help :in (coalton-error-help-notes error)
-          :for start := (car (coalton-error-help-span help))
-          :for end := (cdr (coalton-error-help-span help))
-          :do (multiple-value-bind (start-line start-line-start)
-                  (get-line-from-index file-stream start)
-                (multiple-value-bind (end-line end-line-start)
-                    (get-line-from-index file-stream end)
+                         (print-finished-multiline-notes-for-line (coalton-error-resolved-note-start-line note)))))
 
-                  (unless (= start-line end-line)
-                    (util:coalton-bug "multiline help messages not supported yet."))
+            ;; If there are any multline notes that have not closed out then
+            ;; print them.
+            (print-lines-until last-line)
+            (print-finished-multiline-notes-for-line last-line))))
 
-                  (let ((line-number-width (1+ (floor (log end-line 10)))))
-                    (format stream "help: ~A~%"
-                            (coalton-error-help-message help))
+      ;; Print help messages
+      (loop :for help :in (coalton-error-help-notes error)
+            :for start := (car (coalton-error-help-span help))
+            :for end := (cdr (coalton-error-help-span help))
+            :do (multiple-value-bind (start-line start-line-start)
+                    (get-line-from-index file-stream start)
+                  (multiple-value-bind (end-line end-line-start)
+                      (get-line-from-index file-stream end)
 
-                    (format stream " ~vD | ~A"
-                            line-number-width
-                            start-line
-                            (subseq (get-nth-line file-stream start-line)
-                                    0 (- start start-line-start)))
+                    (unless (= start-line end-line)
+                      (util:coalton-bug "multiline help messages not supported yet."))
 
-                    (let ((replaced-text (funcall (coalton-error-help-replacement help)
-                                                  (subseq (get-nth-line file-stream start-line)
-                                                          (- start start-line-start)
-                                                          (- end end-line-start)))))
-                      (format stream "~A~A~%"
-                              replaced-text
-                              (subseq (get-nth-line file-stream start-line)
-                                      (- end end-line-start)))
+                    (let ((line-number-width (1+ (floor (log end-line 10)))))
+                      (format stream "help: ~A~%"
+                              (coalton-error-help-message help))
 
-                      (format stream
-                              " ~v{~C~:*~} |~v{~C~:*~}~v{~C~:*~}~%"
+                      (format stream " ~vD | ~A"
                               line-number-width
-                              '(#\Space)
-                              (1+ (- start start-line-start))
-                              '(#\Space)
-                              (length replaced-text)
-                              '(#\-)))))))
+                              start-line
+                              (subseq (get-nth-line file-stream start-line)
+                                      0 (- start start-line-start)))
 
-    ;; Print error context
-    (loop :for context :in (coalton-error-context error)
-          :do (format stream "note: ~A~%" (coalton-error-context-message context)))))
+                      (let ((replaced-text (funcall (coalton-error-help-replacement help)
+                                                    (subseq (get-nth-line file-stream start-line)
+                                                            (- start start-line-start)
+                                                            (- end end-line-start)))))
+                        (format stream "~A~A~%"
+                                replaced-text
+                                (subseq (get-nth-line file-stream start-line)
+                                        (- end end-line-start)))
+
+                        (format stream
+                                " ~v{~C~:*~} |~v{~C~:*~}~v{~C~:*~}~%"
+                                line-number-width
+                                '(#\Space)
+                                (1+ (- start start-line-start))
+                                '(#\Space)
+                                (length replaced-text)
+                                '(#\-)))))))
+
+      ;; Print error context
+      (loop :for context :in (coalton-error-context error)
+            :do (format stream "note: ~A~%" (coalton-error-context-message context))))))
 
 (defun get-line-from-index (file index)
   "Get the line number corresponding to the character offset INDEX.

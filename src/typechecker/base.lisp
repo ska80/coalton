@@ -18,21 +18,14 @@
    (#:tc #:coalton-impl/typechecker/stage-1))
   (:export
    #:tc-error                           ; CONDITION
-   #:tc-error-err                       ; ACCESSOR
    #:check-duplicates                   ; FUNCTION
    #:check-package                      ; FUNCTION
    ))
 
 (in-package #:coalton-impl/typechecker/base)
 
-(define-condition tc-error (error)
-  ((err :reader tc-error-err
-        :initarg :err
-        :type function))
-  (:report (lambda (c s)
-             (let ((*print-circle* nil))
-               (tc:with-pprint-variable-context ()
-                 (error:display-coalton-error s (funcall (tc-error-err c))))))))
+(define-condition tc-error (error:coalton-base-error)
+  ())
 
 (defun check-duplicates (elems f callback)
   (declare (type list elems)

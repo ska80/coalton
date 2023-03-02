@@ -31,51 +31,69 @@ Used to forbid reading while inside quasiquoted forms.")
             form)))
     (case first-form
       (coalton:coalton-toplevel
-        (let* ((pathname (or *compile-file-truename* *load-truename*))
-               (filename (if pathname (namestring pathname) "<unknown>"))
+        (let ((opened-streams nil))
+          (unwind-protect
+               (let* ((pathname (or *compile-file-truename* *load-truename*))
+                      (filename (if pathname (namestring pathname) "<unknown>"))
 
-               (file-input-stream
-                 (cond
-                   ((or #+sbcl (sb-int:form-tracking-stream-p stream)
-                        nil)
-                    (open (pathname stream)))
-                   (t
-                    stream)))
-               (file (error:make-coalton-file :stream file-input-stream :name filename)))
+                      (file-input-stream
+                        (cond
+                          ((or #+sbcl (sb-int:form-tracking-stream-p stream)
+                               nil)
+                           (let ((s (open (pathname stream))))
+                             (push s opened-streams)
+                             s))
+                          (t
+                           stream)))
+                      (file (error:make-coalton-file :stream file-input-stream :name filename)))
 
-          (handler-bind
-              ((parser:parse-error
-                 (lambda (c)
-                   (set-highlight-position-for-error stream (funcall (parser:parse-error-err c)))))
-               (tc:tc-error
-                 (lambda (c)
-                   (set-highlight-position-for-error stream (funcall (tc:tc-error-err c))))))
-            (multiple-value-bind (program env)
-                (entry:entry-point (parser:read-program stream file :mode :toplevel-macro))
-              (setf entry:*global-environment* env)
-              program))))
+                 (handler-bind
+                     ;; Render errors and set highlights
+                     ((error:coalton-base-error
+                        (lambda (c)
+                          (set-highlight-position-for-error stream (funcall (error:coalton-error-err c)))
+                          (error:render-coalton-error c)))
+                      (error:coalton-base-warning
+                        (lambda (c)
+                          (error:render-coalton-warning c))))
+                   (multiple-value-bind (program env)
+                       (entry:entry-point (parser:read-program stream file :mode :toplevel-macro))
+                     (setf entry:*global-environment* env)
+                     program)))
+            ;; Clean up any opened file streams
+            (dolist (s opened-streams)
+              (close s)))))
 
       (coalton:coalton
-       (let* ((pathname (or *compile-file-truename* *load-truename*))
-              (filename (if pathname (namestring pathname) "<unknown>"))
+       (let ((opened-streams nil))
+         (unwind-protect
+              (let* ((pathname (or *compile-file-truename* *load-truename*))
+                     (filename (if pathname (namestring pathname) "<unknown>"))
 
-              (file-input-stream
-                (cond
-                  ((or #+sbcl (sb-int:form-tracking-stream-p stream)
-                       nil)
-                   (open (pathname stream)))
-                  (t
-                   stream)))
-              (file (error:make-coalton-file :stream file-input-stream :name filename)))
+                     (file-input-stream
+                       (cond
+                         ((or #+sbcl (sb-int:form-tracking-stream-p stream)
+                              nil)
+                          (let ((s (open (pathname stream))))
+                            (push s opened-streams)
+                            s))
+                         (t
+                          stream)))
+                     (file (error:make-coalton-file :stream file-input-stream :name filename)))
 
-         (handler-bind
-             ((parser:parse-error
-                (lambda (c)
-                  (set-highlight-position-for-error stream (funcall (parser:parse-error-err c)))))
-              (tc:tc-error
-                (lambda (c)
-                  (set-highlight-position-for-error stream (funcall (tc:tc-error-err c))))))
-           (entry:expression-entry-point (parser:read-expression stream file) file))))
+                (handler-bind
+                    ;; Render errors and set highlights
+                    ((error:coalton-base-error
+                       (lambda (c)
+                         (set-highlight-position-for-error stream (funcall (error:coalton-error-err c)))
+                         (error:render-coalton-error c)))
+                     (error:coalton-base-warning
+                       (lambda (c)
+                         (error:render-coalton-warning c))))
+                  (entry:expression-entry-point (parser:read-expression stream file) file)))
+           ;; Clean up any opened file streams
+           (dolist (s opened-streams)
+             (close s)))))
 
       ;; Fall back to reading the list manually
       (t
@@ -150,13 +168,13 @@ Used to forbid reading while inside quasiquoted forms.")
 (defmacro coalton:coalton-toplevel (&body forms)
   (let ((*readtable* (named-readtables:ensure-readtable 'coalton:coalton))
         (*compile-file-truename*
-          (pathname (format nil "COALTON-TOPLEVEL (~A)" *compile-file-truename*)))
-        (stream (make-string-input-stream (cl:format cl:nil "(~S ~{~S~%~})" 'coalton:coalton-toplevel forms))))
-    (cl:read stream)))
+          (pathname (format nil "COALTON-TOPLEVEL (~A)" *compile-file-truename*))))
+    (with-input-from-string (stream (cl:format cl:nil "(~S ~{~S~%~})" 'coalton:coalton-toplevel forms))
+      (cl:read stream))))
 
 (defmacro coalton:coalton (&rest forms)
   (let ((*readtable* (named-readtables:ensure-readtable 'coalton:coalton))
         (*compile-file-truename*
-          (pathname (format nil "COALTON (~A)" *compile-file-truename*)))
-        (stream (make-string-input-stream (cl:format cl:nil "(~S ~{~S~%~})" 'coalton:coalton forms))))
-    (cl:read stream)))
+          (pathname (format nil "COALTON (~A)" *compile-file-truename*))))
+    (with-input-from-string (stream (cl:format cl:nil "(~S ~{~S~%~})" 'coalton:coalton forms))
+      (cl:read stream))))

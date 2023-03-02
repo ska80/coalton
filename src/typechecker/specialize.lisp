@@ -103,7 +103,7 @@
 
       (handler-case
           (tc:match (tc:qualified-ty-type from-qual-ty) (tc:qualified-ty-type to-qual-ty))
-        (error:coalton-type-error ()
+        (error:coalton-internal-type-error ()
           (error 'tc-error
                  :err (coalton-error
                        :span (parser:toplevel-specialize-source specialize)
