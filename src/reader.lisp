@@ -176,5 +176,5 @@ Used to forbid reading while inside quasiquoted forms.")
   (let ((*readtable* (named-readtables:ensure-readtable 'coalton:coalton))
         (*compile-file-truename*
           (pathname (format nil "COALTON (~A)" *compile-file-truename*))))
-    (with-input-from-string (stream (cl:format cl:nil "(~S ~{~S~%~})" 'coalton:coalton forms))
+    (with-input-from-string (stream (cl:format cl:nil "(~S~{ ~S~})" 'coalton:coalton forms))
       (cl:read stream))))
