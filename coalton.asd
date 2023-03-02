@@ -113,7 +113,7 @@
                (:file "unlock-package" :if-feature :sb-package-locks)
                (:file "entry")
                (:file "reader")
-               ;; TOOD: add debug stuff back lol
+               (:file "debug")
                (:file "faux-macros")
                (:file "language-macros")
                (:file "lock-package" :if-feature :sb-package-locks)))
