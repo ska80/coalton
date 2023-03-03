@@ -1,11 +1,11 @@
 (defpackage #:coalton-impl/parser/base
   (:use
-   #:cl
-   #:coalton-impl/error)
+   #:cl)
   (:shadow
    #:parse-error)
   (:local-nicknames
-   (#:util #:coalton-impl/util))
+   (#:util #:coalton-impl/util)
+   (#:error #:coalton-impl/error))
   (:export
    #:identifier                         ; TYPE
    #:identifierp                        ; FUNCTION
@@ -67,10 +67,5 @@
 (deftype identifier-src-list ()
   '(satisfies identifier-src-list-p))
 
-(define-condition parse-error (error)
-  ((err :reader parse-error-err
-        :initarg :err
-        :type function))
-  (:report (lambda (c s)
-             (let ((*print-circle* nil))
-               (display-coalton-error s (funcall (parse-error-err c)))))))
+(define-condition parse-error (error:coalton-base-error)
+  ())
