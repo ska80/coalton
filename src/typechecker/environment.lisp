@@ -40,8 +40,6 @@
    #:*env-update-log*                       ; VARIABLE
    #:value-environment                      ; STRUCT
    #:explicit-repr                          ; TYPE
-   #:explicit-repr-auto-addressable-p       ; FUNCTION
-   #:explicit-repr-explicit-addressable-p   ; FUNCTION
    #:type-entry                             ; STRUCT
    #:make-type-entry                        ; CONSTRUCTOR
    #:type-entry-name                        ; ACCESSOR
@@ -203,19 +201,6 @@
   '(or null
     (member :enum :lisp :transparent)
     (cons (eql :native) (cons t null))))
-
-(defun explicit-repr-auto-addressable-p (explicit-repr)
-  (declare (explicit-repr explicit-repr)
-           (values list &optional))
-  (member explicit-repr
-          '(:lisp :enum)
-          :test #'eq))
-
-(defun explicit-repr-explicit-addressable-p (explicit-repr)
-  (declare (explicit-repr explicit-repr)
-           (values boolean &optional))
-  (and (consp explicit-repr)
-       (eq (first explicit-repr) :native)))
 
 (defstruct type-entry
   (name         (util:required 'name)         :type symbol  :read-only t)

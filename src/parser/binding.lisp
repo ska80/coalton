@@ -98,6 +98,7 @@
     (declare (values boolean))
     t))
 
+;; TODO: oops
 (defgeneric restricted (binding)
   (:documentation "Returns t if BINDING is a lambda.")
 

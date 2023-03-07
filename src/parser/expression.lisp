@@ -632,7 +632,7 @@
                     :primary-note "expected body")))
 
      (let ((vars (loop :for vars := (cst:third form) :then (cst:rest vars)
-                  :while (cst:consp vars)
+                       :while (cst:consp vars)
                        :collect (parse-variable (cst:first vars) file))))
        (make-node-lisp
         :type (parse-type (cst:second form) file)

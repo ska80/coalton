@@ -592,7 +592,6 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
                         (if (null (parser:node-abstraction-vars node))
                             (list (make-node-variable
                                    :type (tc:qualify nil tc:*unit-type*)
-                                   ;; TODO: We could store the source of the parens
                                    :source (parser:node-source node)
                                    :name (gensym "UNUSED")))
                             (loop :for var :in (parser:node-abstraction-vars node)
@@ -1713,6 +1712,10 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
            (type tc-env env)
            (type coalton-file file)
            (values tc:ty-predicate-list (or toplevel-define node-let-binding instance-method-definition) tc:substitution-list &optional))
+  
+  ;; HACK: recursive scc checking on instances is too strict
+  (unless (typep binding 'parser:instance-method-definition)
+    (check-for-invalid-recursive-scc (list binding) (tc-env-env env) file))
 
   (let* ((name (parser:node-variable-name (parser:name binding)))
 
@@ -1810,7 +1813,122 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
              (attach-explicit-binding-type binding-node fresh-qual-type)
              subs)))))))
 
-;; TODO: check if things are incorrectly recursive
+(defun check-for-invalid-recursive-scc (bindings env file)
+  (declare (type (or parser:toplevel-define-list parser:node-let-binding-list parser:instance-method-definition-list) bindings)
+           (type tc:environment env)
+           (type coalton-file file))
+
+  (assert bindings)
+
+  ;; If all bindings are functions then the scc is valid
+  (when (every #'parser:restricted bindings)
+    (return-from check-for-invalid-recursive-scc))
+
+  ;; If some bindings are functions and some are not then the scc is invalid
+  (when (and (some (alexandria:compose #'not #'parser:restricted) bindings)
+             (some #'parser:restricted bindings))
+
+    (let ((first-fn (find-if #'parser:restricted bindings)))
+      (assert first-fn)
+
+      (error 'tc-error
+             :err (coalton-error
+                   :span (parser:node-source (parser:name first-fn))
+                   :file file
+                   :message "Invalid recursive bindings"
+                   :primary-note "function can not be defined recursivly with variables"
+                   :notes (loop :for binding :in (remove first-fn bindings :test #'eq)
+                                :collect (make-coalton-error-note
+                                          :type :secondary
+                                          :span (parser:node-source (parser:name binding))
+                                          :message "with definition"))))))
+
+  ;; If there is a single non-recursive binding then it is valid
+  (when (and (= 1 (length bindings))
+             (not (member (parser:node-variable-name (parser:name (first bindings)))
+                          (parser:collect-variables (parser:value (first bindings)))
+                          :key #'parser:node-variable-name
+                          :test #'eq)))
+    (return-from check-for-invalid-recursive-scc))
+
+  ;; Toplevel bindings cannot be recursive values
+  (when (parser:toplevel (first bindings))
+    (error 'tc-error
+           :err (coalton-error
+                 :span (parser:node-source (parser:name (first bindings)))
+                 :file file
+                 :message "Invalid recursive bindings"
+                 :primary-note "invalid recursive variable bindings"
+                 :notes (loop :for binding :in (rest bindings)
+                              :collect (make-coalton-error-note
+                                        :type :secondary
+                                        :span (parser:node-source (parser:name binding))
+                                        :message "with definition")))))
+
+  (let ((binding-names (mapcar (alexandria:compose #'parser:node-variable-name
+                                                   #'parser:name)
+                               bindings)))
+
+    (labels ((valid-recursive-constructor-call-p (node)
+               "Returns t if NODE is a valid constructor call in a recursive value binding group"
+               (when (typep node 'parser:node-application)
+                 (when (typep (parser:node-application-rator node) 'parser:node-variable)
+
+                   (let* ((function-name (parser:node-variable-name (parser:node-application-rator node)))
+
+                         (ctor (tc:lookup-constructor env function-name :no-error t)))
+
+                     (when ctor
+                       ;; The constructor must be fully applied
+                       (unless (= (length (parser:node-application-rands node)) (tc:constructor-entry-arity ctor))
+                         (return-from valid-recursive-constructor-call-p nil))
+
+                       (let ((type (tc:lookup-type env (tc:constructor-entry-constructs ctor))))
+
+                         ;; Recursive constructors are valid on types
+                         ;; without reprs, types with repr lisp and
+                         ;; the type "List"
+                         (when (or (null (tc:type-entry-explicit-repr type))
+                                   (eq :lisp (tc:type-entry-explicit-repr type))
+                                   (eq 'coalton:List (tc:type-entry-name type)))
+                           (return-from valid-recursive-constructor-call-p
+                             (reduce
+                              (lambda (a b) (and a b))
+                              (parser:node-application-rands node)
+                              :key #'valid-recursive-value-p
+                              :initial-value t)))))))))
+
+             (valid-recursive-value-p (node)
+               "Returns t if NODE is a valid subcomponent in a recursive value binding group"
+               ;; Variables are valid nodes
+               (when (typep node 'parser:node-variable)
+                 (return-from valid-recursive-value-p t))
+
+               (when (valid-recursive-constructor-call-p node)
+                 (return-from valid-recursive-value-p t))
+
+               ;; Nodes are valid if they do not reference variables in the current binding group
+               (not
+                (intersection
+                 binding-names
+                 (mapcar #'parser:node-variable-name
+                         (parser:collect-variables node))
+                 :test #'eq))))
+
+      (when (every (alexandria:compose #'valid-recursive-constructor-call-p #'parser:value) bindings)
+        (return-from check-for-invalid-recursive-scc))
+
+      (error 'tc-error
+             :err (coalton-error
+                   :span (parser:node-source (parser:name (first bindings)))
+                   :file file
+                   :message "Invalid recursive bindings"
+                   :primary-note "invalid recursive variable bindings"
+                   :notes (loop :for binding :in (rest bindings)
+                                :collect (make-coalton-error-note
+                                          :type :secondary
+                                          :span (parser:node-source (parser:name binding))
+                                          :message "with definition")))))))
 
 (defun infer-impls-binding-type (bindings subs env file)
   "Infer the type's of BINDINGS and then qualify those types into schemes."
@@ -1819,6 +1937,8 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
            (type tc-env env)
            (type coalton-file file)
            (values tc:ty-predicate-list (or toplevel-define-list node-let-binding-list) tc:substitution-list &optional))
+
+  (check-for-invalid-recursive-scc bindings (tc-env-env env) file)
 
   (let* (;; track variables bound before typechecking
          (bound-variables (tc-env-bound-variables env))

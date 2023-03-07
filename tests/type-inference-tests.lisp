@@ -357,19 +357,11 @@
      (example-method (TestClassA :b => :a -> :b)))"))
 
 (deftest test-the ()
-  #+broken
   (check-coalton-types
    "(define (f a b)
       ((the (Integer -> Integer -> Boolean) ==) a b))"
 
    '("f" . "(Integer -> Integer -> Boolean)"))
-
-  #+broken
-  (check-coalton-types
-   "(define (f a b)
-      (the (Eq :a => (:a -> :a -> Boolean)) ==)
-        a b)"
-   '("f" . "(Eq :a => :a -> :a -> Boolean)"))
 
   (check-coalton-types
    "(define x (the U32 (+ 1 2)))"

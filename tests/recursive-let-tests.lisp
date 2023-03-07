@@ -26,7 +26,6 @@
   (is (eval '(coalton:coalton (coalton-tests/recursive-let-tests:mylist-circle?
                                (coalton-tests/recursive-let-tests:mylist-zero-circle))))))
 
-#+broken
 (deftest recursively-construct-list ()
   (with-coalton-compilation (:package #:coalton-tests/recursive-let-tests)
     (coalton-toplevel
@@ -37,9 +36,8 @@
     (is list)
     (is (eq list (cdr list)))))
 
-#+broken
 (deftest recursively-construct-via-non-constructor-function ()
-  (signals coalton-impl/typechecker::self-recursive-non-constructor-call
+  (signals tc:tc-error
     (check-coalton-types
      "(declare flipped-cons (List :elt -> :elt -> List :elt))
       (define (flipped-cons list new-head)
@@ -49,9 +47,8 @@
        (coalton:define (make-loop elt)
          (coalton:let ((loop (flipped-cons loop elt))) loop))")))
 
-#+broken
 (deftest recursively-construct-bad-repr-types ()
-  (signals coalton-impl/typechecker::self-recursive-non-default-repr
+  (signals tc:tc-error
     (check-coalton-types
      "(repr :transparent)
       (define-type (MyLoop :elt) (MyLoop (MyLoop :elt)))
@@ -60,7 +57,7 @@
        (define (make-loop)
          (let ((loop (MyLoop loop))) loop))"))
 
-  (signals coalton-impl/typechecker::self-recursive-non-default-repr
+  (signals tc:tc-error
     (check-coalton-types
      "(repr :native (cl:or cl:null mynullableloop))
       (define-type (MyNullableLoop :elt)
@@ -72,9 +69,8 @@
          (let ((lp (MyLoop lp)))
            lp)))")))
 
-#+broken
 (deftest recursive-partial-constructor-application ()
-  (signals coalton-impl/typechecker::self-recursive-partial-application
+  (signals tc:tc-error
     (check-coalton-types
      "(define-type (PairedLoop :elt)
         (PairedLoop (:elt coalton:-> (PairedLoop :elt)) :elt))
@@ -83,9 +79,8 @@
       (define (make-partial-loop)
         (let ((lp (PairedLoop lp))) lp))")))
 
-#+broken
 (deftest recursive-indirect-constructor-application ()
-  (signals coalton-impl/typechecker::self-recursive-non-constructor-call
+  (signals tc:tc-error
     (check-coalton-types
      "(define-type (MyLoop :elt) (MyLoop (MyLoop :elt)))
       (declare make-circular-list-with-deranged-shadowing (:elt -> (List :elt)))
@@ -94,9 +89,8 @@
            (let ((lp (MyLoop elt lp)))
              lp)))")))
 
-#+broken
 (deftest mutually-recursive-data-and-function ()
-  (signals coalton-impl/typechecker::mutually-recursive-function-and-data
+  (signals tc:tc-error
     (check-coalton-types
      "(define-type LoopFn
          (LoopFn (coalton:Unit coalton:-> LoopFn)))
