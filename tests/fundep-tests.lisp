@@ -141,14 +141,12 @@
         (m :a))")))
 
 (deftest fundep-ambigious-declerations ()
-  #+broken
   (check-coalton-types
    "(define-class (C :a :b (:a -> :b)))
 
     (declare f (C :a :b => :a -> Unit))
     (define (f _) Unit)")
 
-  #+broken
   (check-coalton-types
    "(define-class (C :a :b (:a -> :b)))
 
@@ -169,7 +167,6 @@
                (the (List Integer) items)))))"))
 
 (deftest fundep-explicit-binding ()
-  #+broken
   (check-coalton-types
    "(declare fast-evens (coalton-library/iterator:IntoIterator :a coalton:Integer => :a -> coalton:List coalton:Integer))
     (define (fast-evens items)

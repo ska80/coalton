@@ -3,8 +3,6 @@
 ;;;; operatates on both node-let-binding and toplevel-define structs.
 ;;;;
 
-;;; TODO: rename name to binding-name and so on
-
 (defpackage #:coalton-impl/parser/binding
   (:use
    #:cl
@@ -12,18 +10,18 @@
    #:coalton-impl/parser/expression
    #:coalton-impl/parser/parser)
   (:export
-   #:name                               ; FUNCTION
-   #:value                              ; FUNCTION
-   #:source                             ; FUNCTION
-   #:parameters                         ; FUNCTION
-   #:toplevel                           ; FUNCTION
-   #:restricted                         ; FUNCTION
-   #:last-node                          ; FUNCTION
+   #:binding-name                       ; FUNCTION
+   #:binding-value                      ; FUNCTION
+   #:binding-source                     ; FUNCTION
+   #:binding-parameters                 ; FUNCTION
+   #:binding-toplevel-p                 ; FUNCTION
+   #:binding-function-p                 ; FUNCTION
+   #:binding-last-node                  ; FUNCTION
    ))
 
 (in-package #:coalton-impl/parser/binding)
 
-(defgeneric name (binding)
+(defgeneric binding-name (binding)
   (:documentation "Returns the name that BINDING binds")
 
   (:method ((binding node-let-binding))
@@ -38,7 +36,7 @@
     (declare (values node-variable))
     (instance-method-definition-name binding)))
 
-(defgeneric value (binding)
+(defgeneric binding-value (binding)
   (:documentation "Returns the value that BINDING binds")
 
   (:method ((binding node-let-binding))
@@ -53,7 +51,7 @@
     (declare (values node-body))
     (instance-method-definition-body binding)))
 
-(defgeneric source (binding)
+(defgeneric binding-source (binding)
   (:documentation "Returns the source location of BINDING")
 
   (:method ((binding node-let-binding))
@@ -68,7 +66,7 @@
     (declare (values cons))
     (instance-method-definition-source binding)))
 
-(defgeneric parameters (binding)
+(defgeneric binding-parameters (binding)
   (:documentation "Returns the parameters bound in BINDING")
 
   (:method ((binding node-let-binding))
@@ -83,7 +81,7 @@
     (declare (values node-variable-list))
     (instance-method-definition-vars binding)))
 
-(defgeneric toplevel (binding)
+(defgeneric binding-toplevel-p (binding)
   (:documentation "Returns t if BINDING is a toplevel binding.")
 
   (:method ((binding node-let-binding))
@@ -98,8 +96,7 @@
     (declare (values boolean))
     t))
 
-;; TODO: oops
-(defgeneric restricted (binding)
+(defgeneric binding-function-p (binding)
   (:documentation "Returns t if BINDING is a lambda.")
 
   (:method ((binding node-let-binding))
@@ -122,7 +119,7 @@
                   (node-abstraction-p (node-body-last-node (instance-method-definition-body binding)))))
          t)))
 
-(defgeneric last-node (binding)
+(defgeneric binding-last-node (binding)
   (:documentation "Returns the last node in BINDING")
 
   (:method ((binding node-let-binding))

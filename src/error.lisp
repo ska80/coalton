@@ -6,6 +6,7 @@
    #:coalton-internal-condition         ; CONDITION
    #:coalton-base-error                 ; CONDITION
    #:coalton-error-err                  ; ACCESSOR
+   #:coalton-error-text                 ; ACCESSOR
    #:coalton-base-warning               ; CONDITION
    #:coalton-warning-err                ; ACCESSOR
    #:render-coalton-error               ; FUNCTION
@@ -19,7 +20,7 @@
    #:make-coalton-error-help            ; FUNCTION
    #:make-coalton-error-context         ; FUNCTION
    #:*coalton-error-context*            ; VARIABLE
-   #:coalton-error                      ; FUNCTION
+   #:coalton-error                      ; MACRO
    #:coalton-error-location             ; ACCESSOR
    #:coalton-error-file                 ; ACCESSOR
    #:display-coalton-error              ; FUNCTION
@@ -28,7 +29,6 @@
 (in-package #:coalton-impl/error)
 
 
-;; TODO: We should have some report :around to print the internal condition too.
 (define-condition coalton-internal-condition (error)
   ()
   (:documentation "An internal Coalton condition for use in signaling. Internal conditions should always be caught.")
@@ -42,12 +42,13 @@
         :type function)
    (text :accessor coalton-error-text
          :initarg :text
-         :type string))
+         :initform nil
+         :type (or null string)))
   (:documentation "The base type for user-facing errors. Only ERR needs to be specified, and TEXT will be filled when RENDER-COALTON-ERROR is called.")
   (:report (lambda (c s)
              (if (coalton-error-text c)
                  (write-string (coalton-error-text c) s)
-                 (display-coalton-error s (funcall (coalton-error-err c)))))))
+                 (display-coalton-error s (coalton-error-err c))))))
 
 (define-condition coalton-base-warning (style-warning)
   ((err :accessor coalton-warning-err
@@ -67,7 +68,7 @@
   (declare (type coalton-base-error e))
   (setf (coalton-error-text e)
         (with-output-to-string (s)
-          (display-coalton-error s (funcall (coalton-error-err e)))
+          (print-object e s)
           s)
         (coalton-error-err e)
         nil))
@@ -77,7 +78,7 @@
   (declare (type coalton-base-warning w))
   (setf (coalton-warning-text w)
         (with-output-to-string (s)
-          (display-coalton-error s (funcall (coalton-warning-err w)))
+          (print-object w s)
           s)
         (coalton-warning-err w)
         nil))
@@ -207,11 +208,13 @@ NOTES and HELP-NOTES may optionally be supplied notes and help messages."
 
 (defun display-coalton-error (stream error)
   (declare (type stream stream)
-           (type coalton-error error))
+           (type function error))
 
-  (let ((file-stream (coalton-file-stream (coalton-error-file error)))
+  (let* ((*print-circle* nil)
 
-        (*print-circle* nil))
+         (error (funcall error))
+
+         (file-stream (coalton-file-stream (coalton-error-file error))))
 
     ;; TODO: We need some way of hooking into the typechecker here :/
     (progn ;tc:with-pprint-variable-context ()

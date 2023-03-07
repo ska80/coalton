@@ -25,7 +25,13 @@
 (in-package #:coalton-impl/typechecker/base)
 
 (define-condition tc-error (error:coalton-base-error)
-  ())
+  ()
+  (:report
+   (lambda (c s)
+     (if (error:coalton-error-text c)
+         (write-string (error:coalton-error-text c) s)
+         (tc:with-pprint-variable-context ()
+           (error:display-coalton-error s (error:coalton-error-err c)))))))
 
 (defun check-duplicates (elems f callback)
   (declare (type list elems)

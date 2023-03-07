@@ -119,7 +119,7 @@
                       :when (tc:ty-class-fundeps class) :do
                         (loop :for fundep :in (tc:ty-class-fundeps class)
                               :for from-vars := (util:project-map (tc:fundep-from fundep) map pred-tys)
-                              :do (when (subsetp from-vars unambigious-vars :test #'eq)
+                              :do (when (subsetp from-vars unambigious-vars :test #'equalp)
                                     (let ((to-vars (util:project-map (tc:fundep-to fundep) map pred-tys)))
                                       (setf unambigious-vars
                                             (remove-duplicates (append to-vars unambigious-vars) :test #'equalp))))))
@@ -148,7 +148,6 @@
                                             :predicates preds
                                             :type type))))))))
 
-;; TODO: this should be a warning
 (defun check-for-reducable-context (preds qual-ty file env)
   (declare (type tc:ty-predicate-list preds)
            (type parser:qualified-ty qual-ty)
@@ -156,8 +155,9 @@
            (type tc:environment env))
   (let ((reduced-preds (tc:reduce-context env preds nil)))
     (unless (null (set-exclusive-or preds reduced-preds :test #'tc:type-predicate=))
-      (error 'tc-error
+      (warn 'error:coalton-base-warning
              :err (coalton-error
+                   :type :warn
                    :span (parser:qualified-ty-source qual-ty)
                    :file file
                    :message "Declared context can be reduced"

@@ -23,8 +23,6 @@
 
 (in-package #:coalton-impl/codegen/translate-instance)
 
-;;; TODO: think about inlining
-
 (defun translate-instance (instance env)
   (declare (type tc:toplevel-define-instance instance)
            (type tc:environment env))
@@ -85,7 +83,6 @@
 
          ;; If the instance has methods then apply them
          (app-node
-           ;; TODO: should this be (or unqualified-method-definitions superclass-preds)
            (if unqualified-method-definitions 
                (make-node-application
                 :type (pred-type pred env)

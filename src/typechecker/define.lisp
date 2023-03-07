@@ -197,7 +197,7 @@
                       :collect node)))
 
         (loop :for define :in defines
-              :for name := (parser:node-variable-name (parser:name define))
+              :for name := (parser:node-variable-name (parser:binding-name define))
               :for scheme := (tc:remove-source-info (gethash name (tc-env-ty-table tc-env)))
 
               :when (tc:type-variables scheme)
@@ -1633,14 +1633,14 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
 
   ;; Split apart explicit and implicit bindings
   (let* ((expl-bindings (loop :for binding :in bindings
-                              :for name := (parser:node-variable-name (parser:name binding))
+                              :for name := (parser:node-variable-name (parser:binding-name binding))
 
                               :when (gethash name dec-table)
                                 :collect binding))
 
          (impl-bindings (loop :with table := (make-hash-table :test #'eq)
                               :for binding :in bindings
-                              :for name := (parser:node-variable-name (parser:name binding))
+                              :for name := (parser:node-variable-name (parser:binding-name binding))
 
                               :unless (gethash name dec-table)
                                 :do (setf (gethash name table) binding)
@@ -1651,7 +1651,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
 
          (impl-bindings-deps (loop :for name :in impl-bindings-names
                                    :for binding := (gethash name impl-bindings)
-                                   :for node := (parser:value binding)
+                                   :for node := (parser:binding-value binding)
 
                                    :for deps := (remove-duplicates
                                                  (intersection
@@ -1683,14 +1683,14 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
          (expl-binding-nodes
            (loop :for binding :in expl-bindings
 
-                 :for name := (parser:node-variable-name (parser:name binding))
+                 :for name := (parser:node-variable-name (parser:binding-name binding))
                  :for scheme := (gethash name (tc-env-ty-table env))
 
                  :collect (multiple-value-bind (preds_ node_ subs_)
                               (infer-expl-binding-type
                                binding
                                scheme
-                               (parser:node-source (parser:name binding))
+                               (parser:node-source (parser:binding-name binding))
                                subs
                                env
                                file)
@@ -1717,7 +1717,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
   (unless (typep binding 'parser:instance-method-definition)
     (check-for-invalid-recursive-scc (list binding) (tc-env-env env) file))
 
-  (let* ((name (parser:node-variable-name (parser:name binding)))
+  (let* ((name (parser:node-variable-name (parser:binding-name binding)))
 
          (bound-variables (remove name (tc-env-bound-variables env) :test #'eq))
 
@@ -1739,79 +1739,83 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
              (expr-preds (tc:apply-substitution subs fresh-preds))
 
              (env-tvars (tc-env-bindings-variables env bound-variables))
-             (local-tvars (set-difference (tc:type-variables expr-type) env-tvars :test #'eq))
+             (local-tvars (set-difference (append (tc:type-variables expr-type)
+                                                  (tc:type-variables expr-preds))
+                                          env-tvars
+                                          :test #'eq))
 
              (output-qual-type (tc:qualify expr-preds expr-type))
-             (output-scheme (tc:quantify local-tvars output-qual-type))
-
-             (reduced-preds (remove-if-not (lambda (p)
-                                             (not (tc:entail (tc-env-env env) expr-preds p)))
-                                           (tc:apply-substitution subs preds))))
+             (output-scheme (tc:quantify local-tvars output-qual-type)))
 
         ;; Generate additional substitutions from fundeps
-        (setf subs (nth-value 1 (tc:solve-fundeps (tc-env-env env) reduced-preds subs)))
+        (setf subs (nth-value 1 (tc:solve-fundeps (tc-env-env env) preds subs)))
 
-        ;; Split predicates into retained and deferred
-        (multiple-value-bind (deferred-preds retained-preds)
-            (tc:split-context (tc-env-env env) env-tvars reduced-preds subs)
+        (let ((reduced-preds (remove-if-not (lambda (p)
+                                              (not (tc:entail (tc-env-env env) expr-preds p)))
+                                            (tc:apply-substitution subs preds))))
 
-          (let* (;; Calculate defaultable predicates
-                 (defaultable-preds
-                   (handler-case
-                       (tc:default-preds
-                        (tc-env-env env)
-                        (append env-tvars local-tvars)
-                        retained-preds)
 
-                     (error:coalton-internal-type-error (e)
-                       (error-ambigious-pred (tc:ambigious-constraint-pred e) file))))
+          ;; Split predicates into retained and deferred
+          (multiple-value-bind (deferred-preds retained-preds)
+              (tc:split-context (tc-env-env env) env-tvars reduced-preds subs)
 
-                 ;; Defaultable predicates are not retained
-                 (retained-preds
-                   (set-difference retained-preds defaultable-preds :test #'eq)))
+            (let* (;; Calculate defaultable predicates
+                   (defaultable-preds
+                     (handler-case
+                         (tc:default-preds
+                          (tc-env-env env)
+                          (append env-tvars local-tvars)
+                          retained-preds)
 
-            ;; Apply defaulting to defaultable predicates
-            (setf subs (tc:compose-substitution-lists
-                        (tc:default-subs (tc-env-env env) nil defaultable-preds)
-                        subs))
+                       (error:coalton-internal-type-error (e)
+                         (error-ambigious-pred (tc:ambigious-constraint-pred e) file))))
 
-            ;; If the bindings is toplevel then attempt to default deferred-predicates
-            (when (parser:toplevel binding)
+                   ;; Defaultable predicates are not retained
+                   (retained-preds
+                     (set-difference retained-preds defaultable-preds :test #'tc:type-predicate=)))
+
+              ;; Apply defaulting to defaultable predicates
               (setf subs (tc:compose-substitution-lists
-                          (tc:default-subs (tc-env-env env) nil deferred-preds)
+                          (tc:default-subs (tc-env-env env) nil defaultable-preds)
                           subs))
-              (setf deferred-preds (tc:reduce-context (tc-env-env env) deferred-preds subs)))
 
-            ;; Toplevel bindings cannot defer predicates
-            (when (and (parser:toplevel binding) deferred-preds)
-              (error-unknown-pred (first deferred-preds) file))
+              ;; If the bindings is toplevel then attempt to default deferred-predicates
+              (when (parser:binding-toplevel-p binding)
+                (setf subs (tc:compose-substitution-lists
+                            (tc:default-subs (tc-env-env env) nil deferred-preds)
+                            subs))
+                (setf deferred-preds (tc:reduce-context (tc-env-env env) deferred-preds subs)))
 
-            ;; Check that the declared and inferred schemes match
-            (unless (equalp declared-ty output-scheme)
-              (error 'tc-error
-                     :err (coalton-error
-                           :message "Declared type is too general"
-                           :span source
-                           :file file
-                           :primary-note (format nil "Declared type ~A is more general than inferred type ~A."
-                                                 declared-ty
-                                                 output-scheme))))
+              ;; Toplevel bindings cannot defer predicates
+              (when (and (parser:binding-toplevel-p binding) deferred-preds)
+                (error-unknown-pred (first deferred-preds) file))
 
-            ;; Check for undeclared predicates
-            (when (not (null retained-preds))
-              (error 'tc-error
-                     :err (coalton-error
-                           :message "Explicit type is missing inferred predicate"
-                           :span source
-                           :file file
-                           :primary-note (format nil "Declared type ~A is missing inferred predicate ~A"
-                                                 output-qual-type
-                                                 (first retained-preds)))))
+              ;; Check that the declared and inferred schemes match
+              (unless (equalp declared-ty output-scheme)
+                (error 'tc-error
+                       :err (coalton-error
+                             :message "Declared type is too general"
+                             :span source
+                             :file file
+                             :primary-note (format nil "Declared type ~A is more general than inferred type ~A."
+                                                   declared-ty
+                                                   output-scheme))))
 
-            (values
-             deferred-preds
-             (attach-explicit-binding-type binding-node fresh-qual-type)
-             subs)))))))
+              ;; Check for undeclared predicates
+              (when (not (null retained-preds))
+                (error 'tc-error
+                       :err (coalton-error
+                             :message "Explicit type is missing inferred predicate"
+                             :span source
+                             :file file
+                             :primary-note (format nil "Declared type ~A is missing inferred predicate ~A"
+                                                   output-qual-type
+                                                   (first retained-preds)))))
+
+              (values
+               deferred-preds
+               (attach-explicit-binding-type binding-node fresh-qual-type)
+               subs))))))))
 
 (defun check-for-invalid-recursive-scc (bindings env file)
   (declare (type (or parser:toplevel-define-list parser:node-let-binding-list parser:instance-method-definition-list) bindings)
@@ -1821,52 +1825,52 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
   (assert bindings)
 
   ;; If all bindings are functions then the scc is valid
-  (when (every #'parser:restricted bindings)
+  (when (every #'parser:binding-function-p bindings)
     (return-from check-for-invalid-recursive-scc))
 
   ;; If some bindings are functions and some are not then the scc is invalid
-  (when (and (some (alexandria:compose #'not #'parser:restricted) bindings)
-             (some #'parser:restricted bindings))
+  (when (and (some (alexandria:compose #'not #'parser:binding-function-p) bindings)
+             (some #'parser:binding-function-p bindings))
 
-    (let ((first-fn (find-if #'parser:restricted bindings)))
+    (let ((first-fn (find-if #'parser:binding-function-p bindings)))
       (assert first-fn)
 
       (error 'tc-error
              :err (coalton-error
-                   :span (parser:node-source (parser:name first-fn))
+                   :span (parser:node-source (parser:binding-name first-fn))
                    :file file
                    :message "Invalid recursive bindings"
                    :primary-note "function can not be defined recursivly with variables"
                    :notes (loop :for binding :in (remove first-fn bindings :test #'eq)
                                 :collect (make-coalton-error-note
                                           :type :secondary
-                                          :span (parser:node-source (parser:name binding))
+                                          :span (parser:node-source (parser:binding-name binding))
                                           :message "with definition"))))))
 
   ;; If there is a single non-recursive binding then it is valid
   (when (and (= 1 (length bindings))
-             (not (member (parser:node-variable-name (parser:name (first bindings)))
-                          (parser:collect-variables (parser:value (first bindings)))
+             (not (member (parser:node-variable-name (parser:binding-name (first bindings)))
+                          (parser:collect-variables (parser:binding-value (first bindings)))
                           :key #'parser:node-variable-name
                           :test #'eq)))
     (return-from check-for-invalid-recursive-scc))
 
   ;; Toplevel bindings cannot be recursive values
-  (when (parser:toplevel (first bindings))
+  (when (parser:binding-toplevel-p (first bindings))
     (error 'tc-error
            :err (coalton-error
-                 :span (parser:node-source (parser:name (first bindings)))
+                 :span (parser:node-source (parser:binding-name (first bindings)))
                  :file file
                  :message "Invalid recursive bindings"
                  :primary-note "invalid recursive variable bindings"
                  :notes (loop :for binding :in (rest bindings)
                               :collect (make-coalton-error-note
                                         :type :secondary
-                                        :span (parser:node-source (parser:name binding))
+                                        :span (parser:node-source (parser:binding-name binding))
                                         :message "with definition")))))
 
   (let ((binding-names (mapcar (alexandria:compose #'parser:node-variable-name
-                                                   #'parser:name)
+                                                   #'parser:binding-name)
                                bindings)))
 
     (labels ((valid-recursive-constructor-call-p (node)
@@ -1915,19 +1919,19 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
                          (parser:collect-variables node))
                  :test #'eq))))
 
-      (when (every (alexandria:compose #'valid-recursive-constructor-call-p #'parser:value) bindings)
+      (when (every (alexandria:compose #'valid-recursive-constructor-call-p #'parser:binding-value) bindings)
         (return-from check-for-invalid-recursive-scc))
 
       (error 'tc-error
              :err (coalton-error
-                   :span (parser:node-source (parser:name (first bindings)))
+                   :span (parser:node-source (parser:binding-name (first bindings)))
                    :file file
                    :message "Invalid recursive bindings"
                    :primary-note "invalid recursive variable bindings"
                    :notes (loop :for binding :in (rest bindings)
                                 :collect (make-coalton-error-note
                                           :type :secondary
-                                          :span (parser:node-source (parser:name binding))
+                                          :span (parser:node-source (parser:binding-name binding))
                                           :message "with definition")))))))
 
 (defun infer-impls-binding-type (bindings subs env file)
@@ -1946,7 +1950,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
          ;; Add all bindings to the environment
          (expr-tys
            (loop :for binding :in bindings
-                 :for name := (parser:node-variable-name (parser:name  binding))
+                 :for name := (parser:node-variable-name (parser:binding-name  binding))
                  :collect (tc-env-add-variable env name)))
 
          (preds nil)
@@ -1955,7 +1959,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
          (binding-nodes
            (loop :for binding :in bindings
                  :for ty :in expr-tys
-                 :for node := (parser:value binding)
+                 :for node := (parser:binding-value binding)
 
                  :collect (multiple-value-bind (preds_ node_ subs_)
                               (infer-binding-type binding ty subs env file)
@@ -1987,7 +1991,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
 
                ;; Check if the monomorphism restriction applies
                (restricted (some (lambda (b)
-                                   (not (parser:restricted b)))
+                                   (not (parser:binding-function-p b)))
                                  bindings)))
 
 
@@ -1995,7 +1999,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
                       (tc:default-subs (tc-env-env env) nil defaultable-preds)
                       subs))
 
-          (when (parser:toplevel (first bindings))
+          (when (parser:binding-toplevel-p (first bindings))
             (if restricted
                 ;; Restricted bindings have all predicates defaulted
                 (setf subs (tc:compose-substitution-lists
@@ -2026,11 +2030,11 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
                 (loop :for scheme :in output-schemes
                       :for binding :in bindings
 
-                      :for name := (parser:node-variable-name (parser:name binding))
+                      :for name := (parser:node-variable-name (parser:binding-name binding))
 
                       :do (tc-env-replace-type env name scheme))
 
-                (when (and (parser:toplevel (first bindings)) deferred-preds)
+                (when (and (parser:binding-toplevel-p (first bindings)) deferred-preds)
                   (error-unknown-pred (first deferred-preds) file))
 
                 (values
@@ -2054,7 +2058,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
                              :for ty :in output-qual-tys
                              :for binding :in bindings
 
-                             :for name := (parser:node-variable-name (parser:name binding))
+                             :for name := (parser:node-variable-name (parser:binding-name binding))
                              :do (setf (gethash name table) ty)
 
                              :finally (return table))))
@@ -2062,11 +2066,11 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
                 (loop :for scheme :in output-schemes
                       :for binding :in bindings
 
-                      :for name := (parser:node-variable-name (parser:name binding))
+                      :for name := (parser:node-variable-name (parser:binding-name binding))
 
                       :do (tc-env-replace-type env name scheme))
 
-                (when (and (parser:toplevel (first bindings)) deferred-preds)
+                (when (and (parser:binding-toplevel-p (first bindings)) deferred-preds)
                   (error-ambigious-pred (first deferred-preds) file))
 
                 (values
@@ -2087,7 +2091,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
            (values tc:ty-predicate-list (or toplevel-define node-let-binding instance-method-definition) tc:substitution-list))
 
   (check-duplicates
-   (parser:parameters binding)
+   (parser:binding-parameters binding)
    #'parser:node-variable-name
    (lambda (first second)
      (error 'tc-error
@@ -2103,7 +2107,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
                       :span (parser:node-source second)
                       :message "second parameter here"))))))
 
-  (let* ((vars (loop :for var :in (parser:parameters binding)
+  (let* ((vars (loop :for var :in (parser:binding-parameters binding)
                      :for name := (parser:node-variable-name var)
                      :collect (tc-env-add-variable env name)))
 
@@ -2119,7 +2123,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
                      (*returns* nil))
 
                  (multiple-value-bind (ty_ preds_ value-node subs_)
-                     (infer-expression-type (parser:value binding)
+                     (infer-expression-type (parser:binding-value binding)
                                             ret-ty
                                             subs
                                             env
@@ -2166,7 +2170,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
                                       (list
                                        (make-coalton-error-note
                                         :type :primary
-                                        :span (parser:node-source (parser:last-node binding))
+                                        :span (parser:node-source (parser:binding-last-node binding))
                                         :message (format nil "Second return is of type '~A'"
                                                          (tc:apply-substitution subs ret-ty)))))))))
 
@@ -2174,7 +2178,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
 
                ;; If the binding does not have parameters that just infer the binding's type
                (multiple-value-bind (ty_ preds_ value-node subs_)
-                   (infer-expression-type (parser:value binding)
+                   (infer-expression-type (parser:binding-value binding)
                                           ret-ty
                                           subs
                                           env
@@ -2194,8 +2198,8 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
                    (name-node
                      (make-node-variable
                       :type (tc:qualify nil type)
-                      :source (parser:node-source (parser:name binding))
-                      :name (parser:node-variable-name (parser:name binding))))
+                      :source (parser:node-source (parser:binding-name binding))
+                      :name (parser:node-variable-name (parser:binding-name binding))))
 
                    (var-nodes
                      (mapcar (lambda (var ty)
@@ -2203,7 +2207,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
                                 :type (tc:qualify nil ty)
                                 :source (parser:node-source var)
                                 :name (parser:node-variable-name var)))
-                             (parser:parameters binding)
+                             (parser:binding-parameters binding)
                              vars))
 
                    (typed-binding (build-typed-binding binding name-node value-node var-nodes)))
@@ -2214,7 +2218,7 @@ Returns (VALUES INFERRED-TYPE NODE SUBSTITUTIONS)")
         (error:coalton-internal-type-error ()
           (error 'tc-error
                  :err (coalton-error
-                       :span (parser:source binding)
+                       :span (parser:binding-source binding)
                        :file file
                        :message "Type mismatch"
                        :primary-note (format nil "Expected type '~A' but got type '~A'"
