@@ -270,7 +270,8 @@
              (type coalton-file file)
              (values tc:qualified-ty tc:ksubstitution-list))
     
-    (assert (eq expected-kind tc:+kstar+))
+    ;; CCL >:(
+    (assert (equalp expected-kind tc:+kstar+))
 
     (let ((preds (loop :for pred :in (parser:qualified-ty-predicates type)
                        :collect (multiple-value-bind (pred ksubs_)

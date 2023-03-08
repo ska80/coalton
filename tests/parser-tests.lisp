@@ -3,7 +3,7 @@
 (deftest test-parser ()
   (let* ((glob (merge-pathnames "tests/parser/*.bad.coalton" (asdf:system-source-directory "coalton/tests")))
 
-         (files (directory glob :resolve-symlinks nil)))
+         (files (directory glob)))
 
     (loop :for file :in files
           :do (with-open-file (stream file)
@@ -12,7 +12,7 @@
 
   (let* ((glob (merge-pathnames "tests/parser/*.good.coalton" (asdf:system-source-directory "coalton/tests")))
 
-         (files (directory glob :resolve-symlinks nil)))
+         (files (directory glob)))
 
     (loop :for file :in files
           :do (with-open-file (stream file)

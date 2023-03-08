@@ -216,8 +216,7 @@ NOTES and HELP-NOTES may optionally be supplied notes and help messages."
 
          (file-stream (coalton-file-stream (coalton-error-file error))))
 
-    ;; TODO: We need some way of hooking into the typechecker here :/
-    (progn ;tc:with-pprint-variable-context ()
+    (progn
 
       ;; Print the error message and location
       (multiple-value-bind (line-number line-start-index)

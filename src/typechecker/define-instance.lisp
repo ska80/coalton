@@ -139,8 +139,8 @@
 
          (instance-subs (tc:predicate-match class-pred pred))
 
-         ;; TODO: store this as a hash table in the environment
-         ;; TODO: these should *not* be stored as schemes
+         ;; HACK: store this as a hash table in the environment
+         ;; HACK: these should *not* be stored as schemes
          (method-table
            (loop :with table := (make-hash-table :test #'eq)
                  :for (name . scheme) :in (tc:ty-class-unqualified-methods class)

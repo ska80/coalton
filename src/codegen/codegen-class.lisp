@@ -65,7 +65,6 @@
          (class-codegen-sym (tc:ty-class-codegen-sym class))
          (method-accessor (alexandria:format-symbol (symbol-package class-codegen-sym) "~A-~A" class-codegen-sym (car m))))
 
-    ;; TODO: add type annotations
     `((declaim (inline ,(car m)))
       (defun ,(car m) (dict ,@params)
         (declare #.settings:*coalton-optimize*)

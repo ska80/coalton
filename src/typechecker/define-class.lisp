@@ -409,7 +409,9 @@
             :do (check-fundep-variables (parser:fundep-left fundep))
             :do (check-fundep-variables (parser:fundep-right fundep))))
 
-    (let* ((fundeps
+    (let* (
+
+           (fundeps
              (loop :for fundep :in (parser:toplevel-define-class-fundeps class)
                    :collect (tc:make-fundep
                              :from (mapcar #'parser:keyword-src-name (parser:fundep-left fundep))
