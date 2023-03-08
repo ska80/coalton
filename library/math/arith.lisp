@@ -112,7 +112,10 @@ The function general/ is partial, and will error produce a run-time error if the
         float-features:single-float-nan))
     (define (nan? x)
       (Lisp Boolean (x)
-        (float-features:float-NaN-p x)))
+        #+(not allegro)
+        (float-features:float-NaN-p x)
+        #+allegro
+        (cl:and (float-features:float-NaN-p x) cl:t)))
     (define (infinite? x)
       (Lisp Boolean (x)
         (float-features:float-infinity-p x))))
@@ -126,7 +129,10 @@ The function general/ is partial, and will error produce a run-time error if the
         float-features:double-float-nan))
     (define (nan? x)
       (Lisp Boolean (x)
-        (float-features:float-NaN-p x)))
+        #+(not allegro)
+        (float-features:float-NaN-p x)
+        #+allegro
+        (cl:and (float-features:float-NaN-p x) cl:t)))
     (define (infinite? x)
       (Lisp Boolean (x)
         (float-features:float-infinity-p x))))
