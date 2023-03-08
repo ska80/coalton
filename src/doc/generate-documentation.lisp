@@ -196,7 +196,7 @@
       (collect-documentation env package)
     (sort-documentation-by-file basepath link-prefix package value-entries type-entries class-entries)))
 
-;; TODO: We should sort everything here
+;; HACK: We should sort everything here
 (defun sort-documentation-by-file (basepath link-prefix package value-entries type-entries class-entries)
   (declare (type t basepath )
            (type string link-prefix)

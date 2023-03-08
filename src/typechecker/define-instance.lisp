@@ -16,6 +16,7 @@
    #:make-tc-env
    #:infer-expl-binding-type)
   (:local-nicknames
+   (#:settings #:coalton-impl/settings)
    (#:util #:coalton-impl/util)
    (#:parser #:coalton-impl/parser)
    (#:tc #:coalton-impl/typechecker/stage-1))
@@ -27,7 +28,6 @@
 (in-package #:coalton-impl/typechecker/define-instance)
 
 ;;; TODO: other environment modifications are needed here !!!
-;;; TODO: add the orphan check here
 
 (defun toplevel-define-instance (instances env file)
   (declare (type parser:toplevel-define-instance-list instances)
@@ -61,6 +61,7 @@
            (type coalton-file file)
            (values tc:ty-class-instance tc:environment))
 
+  (check-for-orphan-instance instance file)
   (check-instance-valid instance file)
 
   (let* ((unparsed-pred (parser:toplevel-define-instance-pred instance))
@@ -293,3 +294,26 @@
                    :file file
                    :message "Invalid instance"
                    :primary-note "RuntimeRepr instances cannot be written manually")))))
+
+(defun check-for-orphan-instance (instance file)
+  (declare (type parser:toplevel-define-instance instance) 
+           (type coalton-file file))
+
+  ;; Orphan instances can be defined before stage 1 of loading the
+  ;; standard libray is complete
+  (unless settings:*coalton-stage-1-complete*
+    (return-from check-for-orphan-instance))
+
+  (let ((instance-syms
+          (cons
+           (parser:identifier-src-name (parser:ty-predicate-class (parser:toplevel-define-instance-pred instance)))
+           (loop :for type :in (parser:ty-predicate-types (parser:toplevel-define-instance-pred instance))
+                 :append (mapcar #'parser:tycon-name (parser:collect-referenced-types type))))))
+
+    (unless (find *package* instance-syms :key #'symbol-package)
+      (error 'tc-error
+             :err (coalton-error
+                   :span (parser:toplevel-define-instance-head-src instance)
+                   :file file
+                   :message "Invalid orphan instance"
+                   :primary-note "instances must be defined in the same package as their class or reference one or more types in their defining package")))))

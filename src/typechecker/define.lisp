@@ -47,7 +47,7 @@
 
 (in-package #:coalton-impl/typechecker/define)
 
-(declaim (type (member :toplevel :lambda) *return-status*))
+(declaim (type (member :toplevel :lambda :do) *return-status*))
 (defparameter *return-status* :toplevel)
 
 (deftype node-return-info ()
@@ -882,6 +882,15 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
                    :message "Unexpected return"
                    :primary-note "returns must be inside a lambda")))
 
+    ;; Returns cannot be in a do expression
+    (when (eq *return-status* :do)
+      (error 'tc-error
+             :err (coalton-error
+                   :span (parser:node-source node)
+                   :file file
+                   :message "Invalid return"
+                   :primary-note "returns cannot be in a do expression")))
+
     (multiple-value-bind (ty preds expr-node subs)
         (infer-expression-type (or (parser:node-return-expr node)
                                    ;; If the return looks like (return) then it returns unit
@@ -1221,41 +1230,43 @@ Returns (VALUES INFERRED-TYPE PREDICATES NODE SUBSTITUTIONS)")
              (type coalton-file file)
              (values tc:ty tc:ty-predicate-list node-do-bind tc:substitution-list))
 
-    (multiple-value-bind (expr-ty preds expr-node subs)
-        (infer-expression-type (parser:node-do-bind-expr node)
-                               expected-type ; unify here so that expr-ty is in the form "m a"
-                               subs
-                               env
-                               file)
+    (let ((*return-status* :do))
 
-      (multiple-value-bind (ty_ pattern subs)
-          (infer-pattern-type (parser:node-do-bind-pattern node)
-                              (tc:tapp-to (tc:apply-substitution subs expr-ty)) ; this should never fail
-                              subs
-                              env
-                              file)
-        (declare (ignore ty_))
+      (multiple-value-bind (expr-ty preds expr-node subs)
+          (infer-expression-type (parser:node-do-bind-expr node)
+                                 expected-type ; unify here so that expr-ty is in the form "m a"
+                                 subs
+                                 env
+                                 file)
 
-        (handler-case
-            (progn
-              (setf subs (tc:unify subs expr-ty expected-type))
-              (values
-               expr-ty
-               preds
-               (make-node-do-bind
-                :pattern pattern
-                :expr expr-node
-                :source (parser:node-do-bind-source node))
-               subs))
-          (error:coalton-internal-type-error ()
-            (error 'tc-error
-                   :err (coalton-error
-                         :span (parser:node-do-bind-source node)
-                         :file file
-                         :message "Type mismatch"
-                         :primary-note (format nil "Expected type '~A' but got '~A'"
-                                               (tc:apply-substitution subs expected-type)
-                                               (tc:apply-substitution subs expr-ty)))))))))
+        (multiple-value-bind (ty_ pattern subs)
+            (infer-pattern-type (parser:node-do-bind-pattern node)
+                                (tc:tapp-to (tc:apply-substitution subs expr-ty)) ; this should never fail
+                                subs
+                                env
+                                file)
+          (declare (ignore ty_))
+
+          (handler-case
+              (progn
+                (setf subs (tc:unify subs expr-ty expected-type))
+                (values
+                 expr-ty
+                 preds
+                 (make-node-do-bind
+                  :pattern pattern
+                  :expr expr-node
+                  :source (parser:node-do-bind-source node))
+                 subs))
+            (error:coalton-internal-type-error ()
+              (error 'tc-error
+                     :err (coalton-error
+                           :span (parser:node-do-bind-source node)
+                           :file file
+                           :message "Type mismatch"
+                           :primary-note (format nil "Expected type '~A' but got '~A'"
+                                                 (tc:apply-substitution subs expected-type)
+                                                 (tc:apply-substitution subs expr-ty))))))))))
 
   (:method ((node parser:node-do) expected-type subs env file)
     (declare (type tc:ty expected-type)
