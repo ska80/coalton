@@ -28,7 +28,6 @@
 
 ;;; TODO: other environment modifications are needed here !!!
 ;;; TODO: add the orphan check here
-;;; TODO: handle addressable/runtime-repr instances
 
 (defun toplevel-define-instance (instances env file)
   (declare (type parser:toplevel-define-instance-list instances)
@@ -61,6 +60,8 @@
            (type tc:environment env)
            (type coalton-file file)
            (values tc:ty-class-instance tc:environment))
+
+  (check-instance-valid instance file)
 
   (let* ((unparsed-pred (parser:toplevel-define-instance-pred instance))
 
@@ -117,7 +118,7 @@
 
         (loop :for method-name :in method-names
               :for method-codegen-sym := (gethash method-name method-codegen-syms) :do
-          (setf env (tc:set-method-inline env method-name instance-codegen-sym method-codegen-sym)))
+                (setf env (tc:set-method-inline env method-name instance-codegen-sym method-codegen-sym)))
 
         (values instance-entry env)))))
 
@@ -267,3 +268,28 @@
        :methods methods
        :source (parser:toplevel-define-instance-source unparsed-instance)
        :head-src (parser:toplevel-define-instance-head-src unparsed-instance)))))
+
+(defun check-instance-valid (instance file)
+  (declare (type parser:toplevel-define-instance instance)
+           (type coalton-file file))
+
+  ;; Instance validation is disabled for compiler generated instances
+  (when (parser:toplevel-define-instance-compiler-generated instance)
+    (return-from check-instance-valid))
+
+  (let* ((types-package (find-package "COALTON-LIBRARY/TYPES"))
+
+         (runtime-repr (util:find-symbol "RUNTIMEREPR" types-package)))
+
+    ;; Instance validation is disabled in the types package
+    (when (eq *package* types-package)
+      (return-from check-instance-valid))
+
+
+    (when (eq (parser:identifier-src-name (parser:ty-predicate-class (parser:toplevel-define-instance-pred instance))) runtime-repr)
+      (error 'tc-error
+             :err (coalton-error
+                   :span (parser:toplevel-define-instance-head-src instance)
+                   :file file
+                   :message "Invalid instance"
+                   :primary-note "RuntimeRepr instances cannot be written manually")))))

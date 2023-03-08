@@ -13,104 +13,105 @@
    (#:cst #:concrete-syntax-tree)
    (#:util #:coalton-impl/util))
   (:export
-   #:attribute                          ; TYPE
-   #:attribute-source                   ; ACCESSOR
-   #:attribute-monomorphize             ; STRUCT
-   #:make-attribute-monomorphize        ; CONSTRUCTOR
-   #:attribute-repr                     ; STRUCT
-   #:make-attribute-repr                ; CONSTRUCTOR
-   #:attribute-repr-type                ; ACCESSOR
-   #:attribute-repr-arg                 ; ACCESSOR
-   #:constructor                        ; STRUCT
-   #:make-constructor                   ; CONSTRUCTOR
-   #:constructor-name                   ; ACCESSOR
-   #:constructor-fields                 ; ACCESSOR
-   #:constructor-source                 ; ACCESSOR
-   #:constructor-list                   ; TYPE
-   #:toplevel-define-type               ; STRUCT
-   #:make-toplevel-define-type          ; CONSTRUCTOR
-   #:toplevel-define-type-name          ; ACCESSOR
-   #:toplevel-define-type-vars          ; ACCESSOR
-   #:toplevel-define-type-docstring     ; ACCESSOR
-   #:toplevel-define-type-ctors         ; ACCESSOR
-   #:toplevel-define-type-source        ; ACCESSOR
-   #:toplevel-define-type-repr          ; ACCESSOR
-   #:toplevel-define-type-head-src      ; ACCESSOR
-   #:toplevel-define-type-list          ; TYPE
-   #:toplevel-declare                   ; STRUCT
-   #:make-toplevel-declare              ; CONSTRUCTOR
-   #:toplevel-declare-name              ; ACCESSOR
-   #:toplevel-declare-type              ; ACCESSOR
-   #:toplevel-declare-source            ; ACCESSOR
-   #:toplevel-declare-list              ; TYPE
-   #:toplevel-define                    ; STRUCT
-   #:make-toplevel-define               ; CONSTRUCTOR
-   #:toplevel-define-name               ; ACCESSOR
-   #:toplevel-define-vars               ; ACCESSOR
-   #:toplevel-define-docstring          ; ACCESSOR
-   #:toplevel-define-body               ; ACCESSOR
-   #:toplevel-define-source             ; ACCESSOR
-   #:toplevel-define-monomorphize       ; ACCESSOR
-   #:toplevel-define-list               ; TYPE
-   #:fundep                             ; STRUCT
-   #:make-fundep                        ; CONSTRUCTOR
-   #:fundep-left                        ; ACCESSOR
-   #:fundep-right                       ; ACCESSOR
-   #:fundep-source                      ; ACCESSOR
-   #:fundep-list                        ; TYPE
-   #:method-definition                  ; STRUCT
-   #:make-method-definition             ; STRUCT
-   #:method-definition-name             ; ACCESSOR
-   #:method-definition-type             ; ACCESSOR
-   #:method-definition-source           ; ACCESSOR
-   #:method-definition-list             ; TYPE
-   #:toplevel-define-class              ; STRUCT
-   #:make-toplevel-define-class         ; CONSTRUCTOR
-   #:toplevel-define-class-name         ; ACCESSOR
-   #:toplevel-define-class-vars         ; ACCESSOR
-   #:toplevel-define-class-preds        ; ACCESSOR
-   #:toplevel-define-class-fundeps      ; ACCESSOR
-   #:toplevel-define-class-docstring    ; ACCESSOR
-   #:toplevel-define-class-methods      ; ACCESSOR
-   #:toplevel-define-class-source       ; ACCESSOR
-   #:toplevel-define-class-head-src     ; ACCESSOR
-   #:toplevel-define-class-list         ; TYPE
-   #:instance-method-definition         ; STRUCT
-   #:make-instance-method-definition    ; CONSTRUCTOR
-   #:instance-method-definition-name    ; ACCESSOR
-   #:instance-method-definition-vars    ; ACCESSOR
-   #:instance-method-definition-body    ; ACCESSOR
-   #:instance-method-definition-source  ; ACCESSOR
-   #:instance-method-definition-list    ; TYPE
-   #:toplevel-define-instance           ; STRUCT
-   #:make-toplevel-define-instance      ; CONSTRUCTOR
-   #:toplevel-define-instance-context   ; ACCESSOR
-   #:toplevel-define-instance-pred      ; ACCESSOR
-   #:toplevel-define-instance-methods   ; ACCESSOR
-   #:toplevel-define-instance-source    ; ACCESSOR
-   #:toplevel-define-instance-head-src  ; ACCESSOR
-   #:toplevel-define-instance-docstring ; ACCESSOR
-   #:toplevel-define-instance-list      ; TYPE
-   #:toplevel-specialize                ; STRUCT
-   #:make-toplevel-specialize           ; CONSTRUCTOR
-   #:toplevel-specialize-from           ; ACCESSOR
-   #:toplevel-specialize-to             ; ACCESSOR
-   #:toplevel-specialize-type           ; ACCESSOR
-   #:toplevel-specialize-source         ; ACCESSOR
-   #:toplevel-specialize-list           ; TYPE
-   #:program                            ; STRUCT
-   #:make-program                       ; CONSTRUCTOR
-   #:program-package                    ; ACCESSOR
-   #:program-file                       ; ACCESSOR
-   #:program-types                      ; ACCESSOR
-   #:program-declares                   ; ACCESSOR
-   #:program-defines                    ; ACCESSOR
-   #:program-classes                    ; ACCESSOR
-   #:program-instances                  ; ACCESSOR
-   #:program-specializations            ; ACCESSOR
-   #:parse-toplevel-form                ; FUNCTION
-   #:read-program                       ; FUNCTION
-   #:read-expression                    ; FUNCTION
+   #:attribute                                   ; TYPE
+   #:attribute-source                            ; ACCESSOR
+   #:attribute-monomorphize                      ; STRUCT
+   #:make-attribute-monomorphize                 ; CONSTRUCTOR
+   #:attribute-repr                              ; STRUCT
+   #:make-attribute-repr                         ; CONSTRUCTOR
+   #:attribute-repr-type                         ; ACCESSOR
+   #:attribute-repr-arg                          ; ACCESSOR
+   #:constructor                                 ; STRUCT
+   #:make-constructor                            ; CONSTRUCTOR
+   #:constructor-name                            ; ACCESSOR
+   #:constructor-fields                          ; ACCESSOR
+   #:constructor-source                          ; ACCESSOR
+   #:constructor-list                            ; TYPE
+   #:toplevel-define-type                        ; STRUCT
+   #:make-toplevel-define-type                   ; CONSTRUCTOR
+   #:toplevel-define-type-name                   ; ACCESSOR
+   #:toplevel-define-type-vars                   ; ACCESSOR
+   #:toplevel-define-type-docstring              ; ACCESSOR
+   #:toplevel-define-type-ctors                  ; ACCESSOR
+   #:toplevel-define-type-source                 ; ACCESSOR
+   #:toplevel-define-type-repr                   ; ACCESSOR
+   #:toplevel-define-type-head-src               ; ACCESSOR
+   #:toplevel-define-type-list                   ; TYPE
+   #:toplevel-declare                            ; STRUCT
+   #:make-toplevel-declare                       ; CONSTRUCTOR
+   #:toplevel-declare-name                       ; ACCESSOR
+   #:toplevel-declare-type                       ; ACCESSOR
+   #:toplevel-declare-source                     ; ACCESSOR
+   #:toplevel-declare-list                       ; TYPE
+   #:toplevel-define                             ; STRUCT
+   #:make-toplevel-define                        ; CONSTRUCTOR
+   #:toplevel-define-name                        ; ACCESSOR
+   #:toplevel-define-vars                        ; ACCESSOR
+   #:toplevel-define-docstring                   ; ACCESSOR
+   #:toplevel-define-body                        ; ACCESSOR
+   #:toplevel-define-source                      ; ACCESSOR
+   #:toplevel-define-monomorphize                ; ACCESSOR
+   #:toplevel-define-list                        ; TYPE
+   #:fundep                                      ; STRUCT
+   #:make-fundep                                 ; CONSTRUCTOR
+   #:fundep-left                                 ; ACCESSOR
+   #:fundep-right                                ; ACCESSOR
+   #:fundep-source                               ; ACCESSOR
+   #:fundep-list                                 ; TYPE
+   #:method-definition                           ; STRUCT
+   #:make-method-definition                      ; STRUCT
+   #:method-definition-name                      ; ACCESSOR
+   #:method-definition-type                      ; ACCESSOR
+   #:method-definition-source                    ; ACCESSOR
+   #:method-definition-list                      ; TYPE
+   #:toplevel-define-class                       ; STRUCT
+   #:make-toplevel-define-class                  ; CONSTRUCTOR
+   #:toplevel-define-class-name                  ; ACCESSOR
+   #:toplevel-define-class-vars                  ; ACCESSOR
+   #:toplevel-define-class-preds                 ; ACCESSOR
+   #:toplevel-define-class-fundeps               ; ACCESSOR
+   #:toplevel-define-class-docstring             ; ACCESSOR
+   #:toplevel-define-class-methods               ; ACCESSOR
+   #:toplevel-define-class-source                ; ACCESSOR
+   #:toplevel-define-class-head-src              ; ACCESSOR
+   #:toplevel-define-class-list                  ; TYPE
+   #:instance-method-definition                  ; STRUCT
+   #:make-instance-method-definition             ; CONSTRUCTOR
+   #:instance-method-definition-name             ; ACCESSOR
+   #:instance-method-definition-vars             ; ACCESSOR
+   #:instance-method-definition-body             ; ACCESSOR
+   #:instance-method-definition-source           ; ACCESSOR
+   #:instance-method-definition-list             ; TYPE
+   #:toplevel-define-instance                    ; STRUCT
+   #:make-toplevel-define-instance               ; CONSTRUCTOR
+   #:toplevel-define-instance-context            ; ACCESSOR
+   #:toplevel-define-instance-pred               ; ACCESSOR
+   #:toplevel-define-instance-methods            ; ACCESSOR
+   #:toplevel-define-instance-source             ; ACCESSOR
+   #:toplevel-define-instance-head-src           ; ACCESSOR
+   #:toplevel-define-instance-docstring          ; ACCESSOR
+   #:toplevel-define-instance-compiler-generated ; ACCESSOR
+   #:toplevel-define-instance-list               ; TYPE
+   #:toplevel-specialize                         ; STRUCT
+   #:make-toplevel-specialize                    ; CONSTRUCTOR
+   #:toplevel-specialize-from                    ; ACCESSOR
+   #:toplevel-specialize-to                      ; ACCESSOR
+   #:toplevel-specialize-type                    ; ACCESSOR
+   #:toplevel-specialize-source                  ; ACCESSOR
+   #:toplevel-specialize-list                    ; TYPE
+   #:program                                     ; STRUCT
+   #:make-program                                ; CONSTRUCTOR
+   #:program-package                             ; ACCESSOR
+   #:program-file                                ; ACCESSOR
+   #:program-types                               ; ACCESSOR
+   #:program-declares                            ; ACCESSOR
+   #:program-defines                             ; ACCESSOR
+   #:program-classes                             ; ACCESSOR
+   #:program-instances                           ; ACCESSOR
+   #:program-specializations                     ; ACCESSOR
+   #:parse-toplevel-form                         ; FUNCTION
+   #:read-program                                ; FUNCTION
+   #:read-expression                             ; FUNCTION
    ))
 
 (in-package #:coalton-impl/parser/parser)
@@ -320,13 +321,14 @@
 
 (defstruct (toplevel-define-instance
             (:copier nil))
-  (context   (util:required 'context)   :type ty-predicate-list               :read-only t)
-  (pred      (util:required 'pred)      :type ty-predicate                    :read-only t)
-  (docstring (util:required 'docstring) :type (or null string)                :read-only t)
-  (methods   (util:required 'methods)   :type instance-method-definition-list :read-only t)
-  (source    (util:required 'source)    :type cons                            :read-only t)
+  (context            (util:required 'context)            :type ty-predicate-list               :read-only t)
+  (pred               (util:required 'pred)               :type ty-predicate                    :read-only t)
+  (docstring          (util:required 'docstring)          :type (or null string)                :read-only t)
+  (methods            (util:required 'methods)            :type instance-method-definition-list :read-only t)
+  (source             (util:required 'source)             :type cons                            :read-only t)
   ;; Source information for the context and the pred
-  (head-src  (util:required 'head-src)  :type cons                            :read-only t))
+  (head-src           (util:required 'head-src)           :type cons                            :read-only t)
+  (compiler-generated (util:required 'compiler-generated) :type boolean                         :read-only t))
 
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (defun toplevel-define-instance-list-p (x)
@@ -1316,7 +1318,8 @@ consume all attributes"))))
                       :for method := (cst:first methods)
                       :collect (parse-instance-method-definition method (cst:second form) file))
        :source (cst:source form)
-       :head-src (cst:source (cst:second form))))))
+       :head-src (cst:source (cst:second form))
+       :compiler-generated nil))))
 
 (defun parse-specialize (form file)
   (declare (type cst:cst form)

@@ -415,7 +415,8 @@
       :methods (rename-variables-generic% (toplevel-define-instance-methods toplevel) ctx)
       :source (toplevel-define-instance-source toplevel)
       :head-src (toplevel-define-instance-head-src toplevel)
-      :docstring (toplevel-define-instance-docstring toplevel))
+      :docstring (toplevel-define-instance-docstring toplevel)
+      :compiler-generated (toplevel-define-instance-compiler-generated toplevel))
      ctx))
 
   (:method ((program program) ctx)

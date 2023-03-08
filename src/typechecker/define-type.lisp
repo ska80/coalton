@@ -459,4 +459,5 @@
                                    :body (list (util:runtime-quote (type-definition-runtime-type type)))))
                 :source source))
      :source source
-     :head-src source)))
+     :head-src source
+     :compiler-generated t)))
