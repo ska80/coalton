@@ -205,13 +205,19 @@
 
               :do (setf env (tc:set-value-type env name scheme))
 
-                  ;; TODO: set function source parameter names
-
-                  (setf env (tc:set-name env name (tc:make-name-entry
+              :do (setf env (tc:set-name env name (tc:make-name-entry
                                                    :name name
                                                    :type :value
                                                    :docstring (parser:toplevel-define-docstring define)
-                                                   :location (error:coalton-file-name file)))))
+                                                   :location (error:coalton-file-name file))))
+
+              :if (parser:toplevel-define-var-names define)
+                :do (setf env (tc:set-function-source-parameter-names
+                               env
+                               name
+                               (parser:toplevel-define-var-names define)))
+              :else
+                :do (setf env (tc:unset-function-source-parameter-names env name)))
 
         (values
          (tc:apply-substitution subs binding-nodes)

@@ -382,6 +382,7 @@
        (make-toplevel-define
         :name (toplevel-define-name toplevel)
         :vars (rename-variables-generic% (toplevel-define-vars toplevel) new-ctx)
+        :var-names (toplevel-define-var-names toplevel)
         :docstring (toplevel-define-docstring toplevel)
         :body (rename-variables-generic% (toplevel-define-body toplevel) new-ctx)
         :source (toplevel-define-source toplevel)

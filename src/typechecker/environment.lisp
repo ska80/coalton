@@ -161,10 +161,7 @@
 
 (defun make-update-record (name arg-list)
   `(setf env (,name env ,@(loop :for arg :in (cdr arg-list)
-                                :if (symbolp arg)
-                                  :collect (util:runtime-quote arg)
-                                :else
-                                  :collect arg))))
+                                :collect (util:runtime-quote arg)))))
 
 (defmacro define-env-updater (name arg-list &body body)
   `(defun ,name (&rest args)

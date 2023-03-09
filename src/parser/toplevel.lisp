@@ -48,6 +48,7 @@
    #:make-toplevel-define                        ; CONSTRUCTOR
    #:toplevel-define-name                        ; ACCESSOR
    #:toplevel-define-vars                        ; ACCESSOR
+   #:toplevel-define-var-names                   ; ACCESSOR
    #:toplevel-define-docstring                   ; ACCESSOR
    #:toplevel-define-body                        ; ACCESSOR
    #:toplevel-define-source                      ; ACCESSOR
@@ -246,6 +247,7 @@
             (:copier nil))
   (name         (util:required 'name)         :type node-variable                    :read-only t)
   (vars         (util:required 'vars)         :type node-variable-list               :read-only t)
+  (var-names    (util:required 'vars)         :type util:symbol-list                 :read-only t)
   (docstring    (util:required 'docstring)    :type (or null string)                 :read-only t)
   (body         (util:required 'body)         :type node-body                        :read-only t)
   (source       (util:required 'source)       :type cons                             :read-only t)
@@ -848,6 +850,7 @@ consume all attributes"))))
       (make-toplevel-define
        :name name
        :vars arguments
+       :var-names (mapcar #'node-variable-name arguments)
        :docstring docstring
        :body body
        :monomorphize nil
