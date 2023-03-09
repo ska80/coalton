@@ -31,8 +31,9 @@
 
 (in-package #:coalton-impl/codegen/program)
 
-(defun compile-translation-unit (translation-unit env)
+(defun compile-translation-unit (translation-unit monomorphize-table env)
   (declare (type tc:translation-unit translation-unit)
+           (type hash-table monomorphize-table)
            (type tc:environment env))
 
   (let* ((definitions
@@ -59,6 +60,7 @@
     (multiple-value-bind (definitions env)
         (optimize-bindings
          definitions
+         monomorphize-table
          *package*
          env)
 

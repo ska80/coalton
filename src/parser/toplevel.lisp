@@ -43,6 +43,7 @@
    #:toplevel-declare-type                       ; ACCESSOR
    #:toplevel-declare-source                     ; ACCESSOR
    #:toplevel-declare-list                       ; TYPE
+   #:toplevel-declare-monomorphize               ; ACCESSOR
    #:toplevel-define                             ; STRUCT
    #:make-toplevel-define                        ; CONSTRUCTOR
    #:toplevel-define-name                        ; ACCESSOR

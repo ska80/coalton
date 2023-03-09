@@ -38,8 +38,9 @@
 
 (in-package #:coalton-impl/codegen/optimizer)
 
-(defun optimize-bindings (bindings package env)
+(defun optimize-bindings (bindings monomorphize-table package env)
   (declare (type binding-list bindings)
+           (type hash-table monomorphize-table)
            (type package package)
            (type tc:environment env)
            (values binding-list tc:environment))
@@ -69,12 +70,8 @@
 
       (setf bindings
             (loop :for (name . node) :in bindings
-                  ;; TODO: check for monomorphize attribute here
-                  :for attrs := nil
 
-                  :for monomorphize := (find :monomorphize attrs)
-
-                  :if monomorphize
+                  :if (gethash name monomorphize-table)
                     :append (optimize-bindings-initial
                              (monomorphize
                               name

@@ -58,7 +58,9 @@
 
               (setf env (tc:toplevel-specialize (parser:program-specializations program) env file))
 
-              (let ((translation-unit
+              (let ((monomorphize-table (make-hash-table :test #'eq))
+
+                    (translation-unit
                       (tc:make-translation-unit
                        :types type-definitions
                        :definitions toplevel-definitions
@@ -66,10 +68,22 @@
                        :instances toplevel-instances
                        :package *package*)))
 
+                (loop :for define :in (parser:program-defines program)
+                      :when (parser:toplevel-define-monomorphize define)
+                        :do (setf (gethash (parser:node-variable-name (parser:toplevel-define-name define))
+                                           monomorphize-table)
+                                  t))
+
+                (loop :for declare :in (parser:program-declares program)
+                      :when (parser:toplevel-declare-monomorphize declare)
+                        :do (setf (gethash (parser:identifier-src-name (parser:toplevel-declare-name declare))
+                                           monomorphize-table)
+                                  t))
+
                 (analysis:analyze-translation-unit translation-unit env file)
 
                 (multiple-value-bind (program env)
-                    (codegen:compile-translation-unit translation-unit env)
+                    (codegen:compile-translation-unit translation-unit monomorphize-table env)
 
                   (values
                    (if settings:*coalton-skip-update*
