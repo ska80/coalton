@@ -12,3 +12,6 @@
 (define-instance (M2 :a)
   (define (f x) 1)
   (define g 3))
+
+(define-instance (C :a => (C (List :a))))
+(define-instance ((C :a) => (C (List :a))))

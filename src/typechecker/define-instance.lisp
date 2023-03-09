@@ -27,8 +27,6 @@
 
 (in-package #:coalton-impl/typechecker/define-instance)
 
-;;; TODO: other environment modifications are needed here !!!
-
 (defun toplevel-define-instance (instances env file)
   (declare (type parser:toplevel-define-instance-list instances)
            (type tc:environment env)
@@ -111,6 +109,12 @@
                 :predicate pred
                 :codegen-sym instance-codegen-sym
                 :method-codegen-syms method-codegen-syms)))
+
+        (if context
+          (setf env (tc:set-function env instance-codegen-sym (tc:make-function-env-entry
+                                                               :name instance-codegen-sym
+                                                               :arity (length context))))
+          (setf env (tc:unset-function env instance-codegen-sym)))
 
         (when (tc:ty-class-fundeps class)
           (setf env (tc:update-instance-fundeps env pred)))

@@ -15,7 +15,6 @@
   (:export
    #:coalton-toplevel
    #:coalton-codegen
-   #:coalton-codegen-types
    #:coalton-codegen-ast
    #:coalton
    #:declare

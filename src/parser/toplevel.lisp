@@ -1107,16 +1107,32 @@ consume all attributes"))))
                      :message "Malformed class definition"
                      :primary-note "missing class name")))
 
-      (if (null right)
-          ;; No predicates
-          (progn
+      (cond
+        ;; No predicates
+        ((null right)
             (setf unparsed-name (first left))
             (setf unparsed-variables (rest left)))
 
-          ;; Some predicates
-          (progn
-            (setf unparsed-name (second right))
-            (setf unparsed-variables (nthcdr 2 right))))
+        ;; (... => (...) ...)
+        ((and (cst:consp (second right))
+              (consp (cdr (cdr right))))
+         (error 'parse-error
+                :err (coalton-error
+                      :span (cst:source (third right))
+                      :file file
+                      :message "Malformed class definition"
+                      :primary-note "unexpected form")))
+
+        ;; (... => (...))
+        ((cst:consp (second right))
+         (setf unparsed-name (cst:first (second right)))
+         (setf unparsed-variables (cst:listify (cst:rest (second right)))))
+
+        ;; (... => C ...)
+        (t
+         (setf unparsed-name (second right))
+         (setf unparsed-variables (nthcdr 2 right))))
+
 
       ;; (define-class ((C) ...))
       (unless (cst:atom unparsed-name)
@@ -1254,15 +1270,32 @@ consume all attributes"))))
                 (eq (cst:raw form) 'coalton:=>)))
          (cst:listify (cst:second form)))
 
-      (if (null right)
-          ;; No context
-          (setf unparsed-predicate left)
+      (cond
+        ;; No predicates
+        ((null right)
+         (setf unparsed-predicate left))
 
-          ;; Some context
-          (progn
-            (setf unparsed-predicate (cdr right))
-            (setf unparsed-context left)))
+        ;; (... => (...) ...)
+        ((and (second right)
+              (cst:consp (second right))
+              (consp (cdr (cdr right))))
+         (error 'parse-error
+                :err (coalton-error
+                      :span (cst:source (third right))
+                      :file file
+                      :message "Malformed instance definition"
+                      :primary-note "unexpected form")))
 
+        ;; (.... => (...))
+        ((and (second right)
+              (cst:consp (second right)))
+         (setf unparsed-predicate (cst:listify (second right)))
+         (setf unparsed-context left))
+
+        ;; (... => C ...)
+        (t
+         (setf unparsed-predicate (cdr right))
+         (setf unparsed-context left)))
 
       ;; (... =>)
       (when (and left right (null (cdr right)))

@@ -18,3 +18,7 @@
 (define-class (C :a :b :c :d (:a :b -> :c :d)))
 
 (define-class (C :a :b (:a -> :b) (:b -> :a)))
+
+(define-class (Eq :a => (C :a)))
+
+(define-class ((Eq :a) => (C :a)))
