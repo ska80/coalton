@@ -110,7 +110,7 @@ apply s type1 == type2")
   "Returns a SUBSTITUTION-LIST of the most general substitutions required to unify PRED1 to PRED2."
   (declare (type ty-predicate pred1 pred2)
            (type substitution-list subs))
-  (unless (eql (ty-predicate-class pred1)
+  (unless (eq (ty-predicate-class pred1)
                (ty-predicate-class pred2))
     (error 'predicate-unification-error :pred1 pred1 :pred2 pred2))
   (handler-case

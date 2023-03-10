@@ -56,12 +56,13 @@
         :type function)
    (text :accessor coalton-warning-text
          :initarg :text
-         :type string))
+         :initform nil
+         :type (or null string)))
     (:documentation "The base type for user-facing warnings. Only ERR needs to be specified, and TEXT will be filled when RENDER-COALTON-WARNING is called.")
     (:report (lambda (c s)
              (if (coalton-warning-text c)
                  (write-string (coalton-warning-text c) s)
-                 (display-coalton-error s (funcall (coalton-warning-err c)))))))
+                 (display-coalton-error s (coalton-warning-err c))))))
 
 (defun render-coalton-error (e)
   "Render the error object within a COALTON-BASE-ERROR to text, removing the need to keep source file handles open."

@@ -72,14 +72,28 @@
     (loop :for var :in (parser:collect-type-variables (list unparsed-pred unparsed-context))
           :do (partial-type-env-add-var partial-env (parser:tyvar-name var)))
 
-    (let* ((pred (infer-predicate-kinds unparsed-pred nil partial-env file))
+    (let* ((ksubs nil)
+
+           (pred (multiple-value-bind (pred ksubs_)
+                     (infer-predicate-kinds unparsed-pred ksubs partial-env file)
+                   (setf ksubs ksubs_)
+                   pred))
 
            (context (loop :for pred :in unparsed-context
-                          :collect (infer-predicate-kinds pred nil partial-env file)))
+                          :collect (multiple-value-bind (pred ksubs_)
+                                       (infer-predicate-kinds pred ksubs partial-env file)
+                                     (setf ksubs ksubs_)
+                                     pred)))
 
            (class-name (tc:ty-predicate-class pred))
 
-           (class (tc:lookup-class env class-name)))
+           (class (tc:lookup-class env class-name))
+
+           (pred (tc:apply-ksubstitution ksubs pred))
+           (context (tc:apply-ksubstitution ksubs context))
+           (ksubs (tc:kind-monomorphize-subs (tc:kind-variables (cons pred context)) ksubs))
+           (pred (tc:apply-ksubstitution ksubs pred))
+           (context (tc:apply-ksubstitution ksubs context)))
 
       (let* ((instance-codegen-sym
                (alexandria:format-symbol
@@ -111,10 +125,10 @@
                 :method-codegen-syms method-codegen-syms)))
 
         (if context
-          (setf env (tc:set-function env instance-codegen-sym (tc:make-function-env-entry
-                                                               :name instance-codegen-sym
-                                                               :arity (length context))))
-          (setf env (tc:unset-function env instance-codegen-sym)))
+            (setf env (tc:set-function env instance-codegen-sym (tc:make-function-env-entry
+                                                                 :name instance-codegen-sym
+                                                                 :arity (length context))))
+            (setf env (tc:unset-function env instance-codegen-sym)))
 
         (when (tc:ty-class-fundeps class)
           (setf env (tc:update-instance-fundeps env pred)))
