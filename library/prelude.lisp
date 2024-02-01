@@ -256,5 +256,4 @@
    (#:hashtable #:coalton-library/hashtable)
    (#:st #:coalton-library/monad/state)
    (#:iter #:coalton-library/iterator)
-   (#:sys #:coalton-library/system)))
-
+   (#:syz #:coalton-library/system)))
